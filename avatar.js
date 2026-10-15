@@ -36,10 +36,10 @@ loader.load("grokchan.vrm",g=>{
  const Z0=[0,0,0];
  // mirror helper: right side = left side with y,z negated
  const M=v=>[v[0],-v[1],-v[2]];
- const CROSS={lua:[-0.2,-0.5,-1.25],rua:[-0.2,0.5,1.25],lla:[0,-1.9,-0.5],rla:[0,1.9,0.45],lh:[0.3,0,0.3],rh:[0.3,0,-0.3],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
+ const CROSS={lua:[-0.2,-0.44,-1.25],rua:[-0.2,0.44,1.25],lla:[0,-1.9,-0.5],rla:[0,1.9,0.45],lh:[0.3,0,0.3],rh:[0.3,0,-0.3],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
  const HIPL={lua:[0,0.35,-1.0],lla:[0,-0.35,-1.35],lh:[0,0,0.35]};
  const HIPS={lua:HIPL.lua,rua:M(HIPL.lua),lla:HIPL.lla,rla:M(HIPL.lla),lh:HIPL.lh,rh:M(HIPL.lh),sp:[0,0,0],ch:[-0.03,0,0],nk:[0,0,0],hd:[-0.05,0,0.05]};
- const CHIN={lua:HIPL.lua,lla:HIPL.lla,lh:HIPL.lh,rua:[-0.4,0.8,0.95],rla:[0,2.25,-0.3],rh:[0.5,0,0.3],sp:[0,0,0],ch:[0,0,0],nk:[0,0,0],hd:[0.05,0,-0.1]};
+ const CHIN={lua:HIPL.lua,lla:HIPL.lla,lh:HIPL.lh,rua:[-0.4,0.65,1.0],rla:[0,2.25,-0.3],rh:[0.5,0,0.3],sp:[0,0,0],ch:[0,0,0],nk:[0,0,0],hd:[0.05,0,-0.1]};
  // two fingers (index+middle) extended on chin, others curled
  for(const f of["Ring","Little"])for(const j of FS)CHIN["r"+f+j]=[0,0,1.3];
  for(const f of["Index","Middle"])CHIN["r"+f+"Proximal"]=[0,0,0.15];
