@@ -29,8 +29,8 @@ if(TTS){pickVoice();TTS.addEventListener?.("voiceschanged",pickVoice)}
 const ML={ja:["🔊 JP","Voice: Japanese (tap to change)"],en:["🔊 EN","Voice: English anime (Kokoro, desktop)"],off:["🔇","Voice off"]};
 function setSpk(){const[l,ti]=ML[vmode];$("spk").textContent=l;$("spk").title=ti+(vmode==="en"?(kReady?" — ready":kw?" — loading…":""):"");$("spk").setAttribute("aria-label",ti);$("spk").classList.toggle("off",vmode==="off")}
 setSpk();$("spk").onclick=()=>{vmode=MODES[(MODES.indexOf(vmode)+1)%MODES.length];voiceOn=vmode!=="off";localStorage.setItem("gc_vmode",vmode);setSpk();unlockTTS();
- TTS?.cancel();kStop();kJob=null;window.gcAvatar?.stopTalk?.()};
-function unlockTTS(){unlockAudio();if(vmode==="en")initKokoro();if(!TTS||ttsUnlocked)return;try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;TTS.speak(u);ttsUnlocked=true}catch(e){}}
+ TTS?.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.()};
+function unlockTTS(){unlockAudio();primeAudio();if(vmode==="en")initKokoro();if(!TTS||ttsUnlocked)return;try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;TTS.speak(u);ttsUnlocked=true}catch(e){}}
 // split "<ja>…</ja>" off the reply; tolerate a missing or unterminated tag
 function splitJa(r){const m=r.match(/<ja>([\s\S]*?)(?:<\/ja>|$)/i);let en=r,ja="";
  if(m){ja=m[1].trim();en=r.slice(0,m.index)+r.slice(m.index+m[0].length)}
@@ -43,12 +43,12 @@ function plain(t){return t.replace(/```[\s\S]*?```/g," code block. ").replace(/`
 // --- anime voice: Kokoro in a Web Worker, played through Web Audio with a pitch lift ---
 const KV={voice:"af_heart",rate:1.12}; // playbackRate 1.13 ~ +2 semitones (cuter, slightly faster)
 var kw=null,kReady=false,kFail=false,actx=null,kId=0,kSrcs=[];
-function initKokoro(){if(kw||kFail||!window.Worker)return;try{kw=new Worker("tts-worker.js?v=1792105798",{type:"module"});
+function initKokoro(){if(kw||kFail||!window.Worker)return;try{kw=new Worker("tts-worker.js?v=1792106644",{type:"module"});
  kw.onmessage=({data:m})=>{if(m.type==="ready"){kReady=true;setSpk()}else if(m.type==="error"&&!kReady){kFail=true;kw.terminate();kw=null;setSpk()}else kHandle(m)};
  kw.onerror=()=>{kFail=true;kw=null;setSpk()};kw.postMessage({type:"init"})}catch(e){kFail=true}}
 function unlockAudio(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state!=="running")actx.resume();
  const b=actx.createBuffer(1,1,22050),s=actx.createBufferSource();s.buffer=b;s.connect(actx.destination);s.start()}catch(e){}}
-function kStop(){kId++;cue(false);kw?.postMessage({type:"cancel"});kSrcs.forEach(s=>{try{s.onended=null;s.stop()}catch(e){}});kSrcs=[]}
+function kStop(){kId++;if(!vvAbort)cue(false);kw?.postMessage({type:"cancel"});kSrcs.forEach(s=>{try{s.onended=null;s.stop()}catch(e){}});kSrcs=[]}
 var kJob=null;
 function cue(on){const e=$("vcue");if(e)e.hidden=!on}
 function kHandle(m){const j=kJob;if(!j||m.id!==j.id)return;
@@ -63,9 +63,27 @@ function kSay(t,txt,fallback){kStop();const id=kId;cue(true);window.gcVoiceLog?.
  kJob={id,text:t,fail(){if(kJob&&kJob.id===id){kJob=null;kStop();cue(false);window.gcVoiceLog?.push(["fallback",performance.now()]);fallback()}}};
  kJob.to=setTimeout(()=>kJob?.id===id&&kJob.fail(),25000); // too slow -> browser voice
  kw.postMessage({type:"gen",id,text:txt,voice:KV.voice})}
-function say(t,ja){const av=window.gcAvatar;if(TTS)TTS.cancel();kStop();
+// --- Japanese voice: VOICEVOX:四国めたん（ツンツン） via the Worker's /tts (tts.quest) ---
+const vvAudio=new Audio();vvAudio.preload="auto";vvAudio.setAttribute("playsinline","");
+const SILENT="data:audio/mpeg;base64,SUQzBAAAAAAAIlRTU0UAAAAOAAADTGF2ZjYxLjcuMTAzAAAAAAAAAAAAAAD/83DAAAAAAAAAAAAASW5mbwAAAA8AAAAGAAADKQBaWlpaWlpaWlpaWlpaWlpae3t7e3t7e3t7e3t7e3t7e3ucnJycnJycnJycnJycnJycvb29vb29vb29vb29vb29vb3e3t7e3t7e3t7e3t7e3t7e3v////////////////////8AAAAATGF2YzYxLjE5AAAAAAAAAAAAAAAAJAKjAAAAAAAAAymyjycdAAAAAAAAAAAAAAAAAP/zQMQAAAADSAAAAABMQU1FMy4xMDBVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxFsAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NAxKQAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80LEowAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80DEpAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsSjAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==";
+let vvPrimed=false,vvId=0,vvUrl=null,vvAbort=null;
+function primeAudio(){if(vvPrimed)return;vvPrimed=true;try{vvAudio.src=SILENT;vvAudio.muted=true;const p=vvAudio.play();p&&p.then(()=>{vvAudio.pause();vvAudio.muted=false}).catch(()=>{vvAudio.muted=false;vvPrimed=false})}catch(e){vvPrimed=false}}
+function vvStop(){vvId++;vvAbort?.abort();vvAbort=null;try{vvAudio.onplaying=vvAudio.onended=vvAudio.onerror=null;vvAudio.pause()}catch(e){}if(vvUrl){URL.revokeObjectURL(vvUrl);vvUrl=null}}
+async function vvSay(t,ja,fallback){vvStop();const id=vvId,av=window.gcAvatar,L=window.gcVoiceLog;cue(true);L?.push(["vv-req",performance.now()]);
+ let failed=false;const fail=why=>{if(failed||id!==vvId)return;failed=true;cue(false);L?.push(["vv-fail",performance.now(),why]);vvStop();fallback()};
+ const ac=new AbortController();vvAbort=ac;const to=setTimeout(()=>{ac.abort();fail("timeout")},32000);
+ try{const r=await fetch(WORKER_URL+"/tts",{method:"POST",signal:ac.signal,headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({text:ja})});
+  clearTimeout(to);if(id!==vvId)return;if(!r.ok||!/audio/.test(r.headers.get("content-type")||""))return fail("http "+r.status);
+  const b=await r.blob();if(id!==vvId)return;vvUrl=URL.createObjectURL(b);L?.push(["vv-audio",performance.now(),b.size,r.headers.get("X-TTS-Ms")]);
+  let started=false;
+  vvAudio.onplaying=()=>{if(id!==vvId||started)return;started=true;cue(false);av?.speak(t,true);L?.push(["start",performance.now()])};
+  vvAudio.onended=()=>{if(id!==vvId)return;av?.stopTalk?.();L?.push(["end",performance.now(),vvAudio.duration]);vvStop()};
+  vvAudio.onerror=()=>fail("media error");
+  vvAudio.muted=false;vvAudio.src=vvUrl;await vvAudio.play()}
+ catch(e){clearTimeout(to);if(id===vvId)fail(e.name==="AbortError"?"timeout":"play: "+e.name)}}
+function say(t,ja){const av=window.gcAvatar;if(TTS)TTS.cancel();kStop();vvStop();
  const txt=plain(t);if(vmode==="off"||!txt){av?.speak(t);return}
- if(vmode==="ja"&&ja&&jaVoice){sayBrowser(t,ja,jaVoice,1.45,1.05);return}
+ if(vmode==="ja"&&ja){vvSay(t,ja,()=>{if(jaVoice)sayBrowser(t,ja,jaVoice,1.45,1.05);else sayBrowser(t,txt)});return}
  if(vmode==="en"&&kReady&&actx){kSay(t,txt,()=>sayBrowser(t,txt));return}
  sayBrowser(t,txt)}
 function sayBrowser(t,txt,v=voice,pitch=1.2,rate=1){const av=window.gcAvatar;if(!TTS){av?.speak(t);return}
@@ -77,7 +95,7 @@ function sayBrowser(t,txt,v=voice,pitch=1.2,rate=1){const av=window.gcAvatar;if(
  setTimeout(()=>{if(!started&&!done){done=true;TTS.cancel();av?.speak(t);window.gcVoiceLog?.push(["timer-fallback",performance.now()])}},2500)} // no voices / blocked: timer fallback
 $("new").onclick=()=>{hist=[];$("log").innerHTML=""};
 $("f").onsubmit=async e=>{e.preventDefault();unlockTTS();const q=$("q").value.trim();if(!q)return;$("q").value="";
- hist.push({role:"user",content:q});add("user",q);if(TTS)TTS.cancel();kStop();kJob=null;window.gcAvatar?.stopTalk?.();const w=add("assistant","…");window.gcAvatar?.thinking();
+ hist.push({role:"user",content:q});add("user",q);if(TTS)TTS.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();const w=add("assistant","…");window.gcAvatar?.thinking();
  try{const r=await fetch(WORKER_URL+"/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({messages:hist.slice(-20),model:$("model").value})});
   const o=await r.json();w.remove();window.gcAvatar?.idle();
   if(r.status===401){add("err","Wrong password.");hist.pop();return}
