@@ -21,12 +21,21 @@ const loader=new GLTFLoader();loader.register(p=>new VRMLoaderPlugin(p));
 loader.load("grokchan.vrm",g=>{
  const vrm=g.userData.vrm;if(!vrm)return fail("no vrm");
  VRMUtils.removeUnnecessaryVertices?.(g.scene);VRMUtils.combineSkeletons?.(g.scene);VRMUtils.rotateVRM0(vrm);
- scene.add(vrm.scene);vrm.scene.traverse(o=>o.frustumCulled=false);
+ scene.add(vrm.scene);const baseRY=vrm.scene.rotation.y;vrm.scene.traverse(o=>o.frustumCulled=false);
  const head=vrm.humanoid.getNormalizedBoneNode("head");vrm.scene.updateMatrixWorld(true);
  const hp=new THREE.Vector3();head.getWorldPosition(hp);
  cam.position.set(0,hp.y,1.45);cam.lookAt(0,hp.y-0.12,0);
  if(vrm.lookAt)vrm.lookAt.target=target;
  lbl.remove();
+ // drag to rotate (mouse / one finger); double-click/tap resets
+ let rotY=0,rotX=0,tgtY=0,tgtX=0,drag=null,lastTap=0;
+ cv.style.touchAction="none";
+ cv.addEventListener("pointerdown",e=>{if(!e.isPrimary)return;drag={x:e.clientX,y:e.clientY,ry:tgtY,rx:tgtX};cv.setPointerCapture(e.pointerId);
+  if(e.pointerType!=="mouse"){const n=performance.now();if(n-lastTap<300){tgtY=tgtX=0;drag=null}lastTap=n}});
+ cv.addEventListener("pointermove",e=>{if(!drag)return;e.preventDefault();tgtY=drag.ry+(e.clientX-drag.x)*0.0056;tgtX=Math.max(-0.25,Math.min(0.25,drag.rx+(e.clientY-drag.y)*0.004))});
+ const end=()=>{drag=null};cv.addEventListener("pointerup",end);cv.addEventListener("pointercancel",end);
+ cv.addEventListener("dblclick",()=>{tgtY=tgtX=0});
+ window.gcRotate=(y,x=0)=>{tgtY=rotY=y;tgtX=rotX=x};
  const em=vrm.expressionManager,has=n=>!!em?.getExpression(n);
  const set=(n,v)=>has(n)&&em.setValue(n,v);
  const B=n=>vrm.humanoid.getNormalizedBoneNode(n);
@@ -36,7 +45,7 @@ loader.load("grokchan.vrm",g=>{
  const Z0=[0,0,0];
  // mirror helper: right side = left side with y,z negated
  const M=v=>[v[0],-v[1],-v[2]];
- const CROSS={lua:[-0.2,-0.44,-1.25],rua:[-0.2,0.44,1.25],lla:[0,-1.9,-0.5],rla:[0,1.9,0.45],lh:[0.3,0,0.3],rh:[0.3,0,-0.3],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
+ const CROSS={lua:[-0.25,-0.55,-1.15],rua:[-0.25,0.55,1.15],lla:[0,-2.1,-0.7],rla:[0,2.1,0.65],lh:[0.2,-0.4,0.2],rh:[0.2,0.4,-0.2],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
  const HIPL={lua:[0,0.35,-1.0],lla:[0,-0.35,-1.35],lh:[0,0,0.35]};
  const HIPS={lua:HIPL.lua,rua:M(HIPL.lua),lla:HIPL.lla,rla:M(HIPL.lla),lh:HIPL.lh,rh:M(HIPL.lh),sp:[0,0,0],ch:[-0.03,0,0],nk:[0,0,0],hd:[-0.05,0,0.05]};
  const CHIN={lua:HIPL.lua,lla:HIPL.lla,lh:HIPL.lh,rua:[-0.4,0.65,1.0],rla:[0,2.25,-0.3],rh:[0.5,0,0.3],sp:[0,0,0],ch:[0,0,0],nk:[0,0,0],hd:[0.05,0,-0.1]};
@@ -77,6 +86,7 @@ loader.load("grokchan.vrm",g=>{
   // emotion
   const e=now<S.emoUntil?S.emo:(S.mode==="thinking"?"relaxed":null);
   EMOS.forEach(n=>{if(!has(n))return;const cur=em.getValue(n)||0;em.setValue(n,cur+(((n===e)?(n==="relaxed"&&S.mode==="thinking"?0.3:0.7):0)-cur)*Math.min(1,dt*6))});
+  rotY+=(tgtY-rotY)*Math.min(1,dt*12);rotX+=(tgtX-rotX)*Math.min(1,dt*12);vrm.scene.rotation.set(rotX,baseRY+rotY,0);
   vrm.update(dt);renderer.render(scene,cam)});
 },p=>{if(p.total)document.getElementById("avp").textContent=Math.round(p.loaded/p.total*100)+"%"},fail);
 }
