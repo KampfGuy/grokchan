@@ -3,12 +3,15 @@
 <meta name="theme-color" content="#0f0d13"><title>Grok-Chan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1792107052">
+<link rel="stylesheet" href="style.css?v=1792107915">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/","@pixiv/three-vrm":"https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.1.0/lib/three-vrm.module.min.js"}}</script></head>
 <body>
 <div id="app">
  <header id="top">
   <div class="who"><div class="pfp" aria-hidden="true">G</div><div><h1>Grok-Chan</h1><div id="status" class="status"><i></i><span>online</span></div></div></div>
+  <div id="persona" class="seg" role="radiogroup" aria-label="Personality">
+   <button type="button" role="radio" data-p="tsundere">Tsundere</button><button type="button" role="radio" data-p="deredere">DereDere</button><button type="button" role="radio" data-p="yandere">Yandere</button><span class="thumb" aria-hidden="true"></span>
+  </div>
   <div class="actions">
    <select id="model" aria-label="Model" title="Model"></select>
    <button id="spk" class="pill" type="button" aria-label="Voice mode">🔊 JP</button>
@@ -29,4 +32,4 @@
 </div>
 <div id="gate" hidden><form id="gf" class="card"><div class="pfp big">G</div><h2>Welcome back</h2><p>Enter the access password to chat with Grok-Chan.</p>
  <input id="pw" type="password" placeholder="Access password" autocomplete="current-password"><button type="submit" class="primary">Enter</button><div id="gerr" class="gerr" hidden>Wrong password — try again.</div></form></div>
-<script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script><script src="app.js?v=1792107052"></script><script type="module" src="avatar.js?v=1792107052"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script><script src="app.js?v=1792107915"></script><script type="module" src="avatar.js?v=1792107915"></script></body></html>

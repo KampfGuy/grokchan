@@ -80,7 +80,7 @@ function vvStop(){vvId++;vvAbort?.abort();vvAbort=null;try{vvAudio.onplaying=vvA
 async function vvSay(t,ja,fallback,show=()=>{}){vvStop();const id=vvId,av=window.gcAvatar,L=window.gcVoiceLog;cue(true);L?.push(["vv-req",performance.now()]);
  let failed=false;const fail=why=>{if(failed||id!==vvId)return;failed=true;cue(false);show();L?.push(["vv-fail",performance.now(),why]);vvStop();fallback()};
  const ac=new AbortController();vvAbort=ac;const to=setTimeout(()=>{ac.abort();fail("timeout")},32000);
- try{const r=await fetch(WORKER_URL+"/tts",{method:"POST",signal:ac.signal,headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({text:ja})});
+ try{const r=await fetch(WORKER_URL+"/tts",{method:"POST",signal:ac.signal,headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({text:ja,speaker:SPEAKER[persona]})});
   clearTimeout(to);if(id!==vvId)return;if(!r.ok||!/audio/.test(r.headers.get("content-type")||""))return fail("http "+r.status);
   const b=await r.blob();if(id!==vvId)return;vvUrl=URL.createObjectURL(b);L?.push(["vv-audio",performance.now(),b.size,r.headers.get("X-TTS-Ms")]);
   let started=false;
@@ -102,19 +102,27 @@ function sayBrowser(t,txt,v=voice,pitch=1.2,rate=1){const av=window.gcAvatar;if(
  u.onend=u.onerror=()=>{if(done)return;done=true;setStatus("online");if(started)av?.stopTalk?.();else av?.speak(t);window.gcVoiceLog?.push(["end",performance.now()])};
  TTS.speak(u);
  setTimeout(()=>{if(!started&&!done){done=true;TTS.cancel();setStatus("online");av?.speak(t);window.gcVoiceLog?.push(["timer-fallback",performance.now()])}},2500)} // no voices / blocked: timer fallback
-$("new").onclick=()=>{hist=[];$("log").innerHTML=""};
+// --- personas ---
+var chatGen=0;const PERSONAS=["tsundere","deredere","yandere"],SPEAKER={tsundere:6,deredere:0,yandere:4}; // VOICEVOX 四国めたん: ツンツン / あまあま / セクシー
+let persona=localStorage.getItem("gc_persona");if(!PERSONAS.includes(persona))persona="tsundere";
+function setPersona(p,fresh){persona=p;localStorage.setItem("gc_persona",p);document.body.dataset.persona=p;
+ const seg=$("persona");seg.dataset.i=PERSONAS.indexOf(p);seg.querySelectorAll("button").forEach(b=>b.setAttribute("aria-checked",b.dataset.p===p));
+ if(fresh){TTS?.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();hideTyping();setStatus("online");hist=[];$("log").innerHTML="";chatGen++}}
+$("persona").querySelectorAll("button").forEach(b=>b.onclick=()=>{if(b.dataset.p!==persona)setPersona(b.dataset.p,true)});
+setPersona(persona,false);
+$("new").onclick=()=>{setPersona(persona,true)};
 $("f").onsubmit=async e=>{e.preventDefault();unlockTTS();const q=$("q").value.trim();if(!q)return;
  if(!$("pw").value){showGate();return}
  $("q").value="";autosize();
- hist.push({role:"user",content:q});add("user",q);if(TTS)TTS.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();showTyping();window.gcAvatar?.thinking();
- try{const r=await fetch(WORKER_URL+"/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({messages:hist.slice(-20),model:$("model").value})});
-  const o=await r.json();window.gcAvatar?.idle();
+ hist.push({role:"user",content:q});add("user",q);if(TTS)TTS.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();showTyping();window.gcAvatar?.thinking();const gen=chatGen;
+ try{const r=await fetch(WORKER_URL+"/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({messages:hist.slice(-20),model:$("model").value,persona})});
+  const o=await r.json();if(gen!==chatGen)return;window.gcAvatar?.idle();
   if(r.status===401){hideTyping();setStatus("online");hist.pop();$("log").lastElementChild?.remove();$("q").value=q;showGate(true);return}
   if(!r.ok){hideTyping();setStatus("online");add("err",o.error||"Error");hist.pop();return}
   hist.push({role:"assistant",content:o.reply});const sp=splitJa(o.reply);
   let shown=false;const show=()=>{if(shown)return;shown=true;hideTyping();if(!$("status").classList.contains("speaking"))setStatus("online");add("assistant",sp.en,o.model)};
   say(sp.en,sp.ja,show)}
- catch(x){hideTyping();setStatus("online");window.gcAvatar?.idle();hist.pop();add("err","Network error: "+x.message)}};
+ catch(x){if(gen!==chatGen)return;hideTyping();setStatus("online");window.gcAvatar?.idle();hist.pop();add("err","Network error: "+x.message)}};
 // password gate
 function showGate(bad){$("gate").hidden=false;$("gerr").hidden=!bad;setTimeout(()=>$("pw").focus(),50)}
 $("gf").onsubmit=e=>{e.preventDefault();const v=$("pw").value.trim();if(!v)return;localStorage.setItem("gc_pw",v);$("gate").hidden=true;unlockTTS();if($("q").value.trim())$("f").requestSubmit();else $("q").focus()};
