@@ -31,10 +31,21 @@ loader.load("grokchan.vrm",g=>{
  const set=(n,v)=>has(n)&&em.setValue(n,v);
  const B=n=>vrm.humanoid.getNormalizedBoneNode(n);
  const bones={lua:B("leftUpperArm"),rua:B("rightUpperArm"),lla:B("leftLowerArm"),rla:B("rightLowerArm"),sp:B("spine"),ch:B("chest"),nk:B("neck"),hd:head,lh:B("leftHand"),rh:B("rightHand")};
+ const FN=["Index","Middle","Ring","Little"],FS=["Proximal","Intermediate","Distal"];
+ for(const sd of["left","right"])for(const f of FN)for(const j of FS){const n=B(sd+f+j);if(n)bones[(sd[0])+f+j]=n}
  const Z0=[0,0,0];
- const CROSS={lua:[-0.5,-0.8,-1.15],rua:[-0.5,0.75,1.1],lla:[0,-2.0,-1.2],rla:[0,1.9,1.05],lh:[0.3,0,0.3],rh:[0.3,0,-0.3],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
- const THINK={lua:[0,0,-1.2],rua:[0,0.5,0.95],lla:[0,0,-0.15],rla:[0,2.2,0.15],lh:[0,0,0],rh:[0,0,0],sp:[0,0,0],ch:[0,0,0],nk:[0,0,0],hd:[0,0,0.15]};
- window.gcPose={CROSS,THINK};
+ // mirror helper: right side = left side with y,z negated
+ const M=v=>[v[0],-v[1],-v[2]];
+ const CROSS={lua:[-0.2,-0.5,-1.25],rua:[-0.2,0.5,1.25],lla:[0,-1.9,-0.5],rla:[0,1.9,0.45],lh:[0.3,0,0.3],rh:[0.3,0,-0.3],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
+ const HIPL={lua:[0,0.35,-1.0],lla:[0,-0.35,-1.35],lh:[0,0,0.35]};
+ const HIPS={lua:HIPL.lua,rua:M(HIPL.lua),lla:HIPL.lla,rla:M(HIPL.lla),lh:HIPL.lh,rh:M(HIPL.lh),sp:[0,0,0],ch:[-0.03,0,0],nk:[0,0,0],hd:[-0.05,0,0.05]};
+ const CHIN={lua:HIPL.lua,lla:HIPL.lla,lh:HIPL.lh,rua:[-0.4,0.8,0.95],rla:[0,2.25,-0.3],rh:[0.5,0,0.3],sp:[0,0,0],ch:[0,0,0],nk:[0,0,0],hd:[0.05,0,-0.1]};
+ // two fingers (index+middle) extended on chin, others curled
+ for(const f of["Ring","Little"])for(const j of FS)CHIN["r"+f+j]=[0,0,1.3];
+ for(const f of["Index","Middle"])CHIN["r"+f+"Proximal"]=[0,0,0.15];
+ // curl fingers slightly on the hips
+ for(const sd of["l","r"])for(const f of FN)for(const j of FS){HIPS[sd+f+j]=[0,0,(sd==="l"?-1:1)*0.25];if(sd==="l")CHIN[sd+f+j]=[0,0,-0.25]}
+ window.gcPose={CROSS,HIPS,CHIN};
  const EMOS=["happy","angry","sad","relaxed","surprised"];
  function pick(t){const s=t.toLowerCase();
   if(/baka|hmph|idiot|dummy|stupid|annoying|ugh|it'?s not like/.test(s))return "angry";
@@ -42,18 +53,21 @@ loader.load("grokchan.vrm",g=>{
   if(/love|happy|glad|great|thank|yay|cute|proud|♥|❤|:\)|haha|hehe/.test(s))return "happy";
   if(/!\?|\?!|what\?|really\?|eh\?|whoa|wow/.test(s))return "surprised";
   return "relaxed"}
- const speak=t=>{const now=performance.now()/1000;S.mode="idle";S.talkUntil=now+Math.min(12,Math.max(1.2,t.length*0.055));S.emo=pick(t);S.emoUntil=S.talkUntil+2.5};
+ const speak=t=>{const now=performance.now()/1000;S.mode="idle";S.talkUntil=now+Math.min(6,Math.max(3,t.length*0.05));S.talkPose=Math.random()<0.5?"HIPS":"CHIN";S.emo=pick(t);S.emoUntil=S.talkUntil+2.5};
  window.gcAvatar={thinking(){S.mode="thinking";S.emo=null},idle(){S.mode="idle"},speak};
  if(S.pending)speak(S.pending);
  let nextBlink=2,blinkT=-1,th=0;const clock=new THREE.Clock();const V=["aa","ih","ou","ee","oh"].filter(has);
  renderer.setAnimationLoop(()=>{if(document.hidden){clock.getDelta();return}const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
-  th+=((S.mode==="thinking"?1:0)-th)*Math.min(1,dt*4);
-  const P=window.gcPoseOverride||CROSS,br=Math.sin(t*1.6);
-  for(const k in bones){const b=bones[k];if(!b)continue;const a=P[k]||Z0,c=THINK[k]||Z0;
+  const nowP=performance.now()/1000,f=window.gcForce;
+  const tp=f||(nowP<S.talkUntil?S.talkPose:null);
+  if(tp)S.lastPose=tp;
+  th+=((tp?1:0)-th)*Math.min(1,dt*12); // ~0.25 s blend
+  const A=CROSS,C=window.gcPose[S.lastPose||"HIPS"],br=Math.sin(t*1.6);
+  for(const k in bones){const b=bones[k];if(!b)continue;const a=A[k]||Z0,c=C[k]||Z0;
    b.rotation.set(a[0]+(c[0]-a[0])*th,a[1]+(c[1]-a[1])*th,a[2]+(c[2]-a[2])*th)}
   if(bones.ch)bones.ch.rotation.x+=br*0.02;bones.lua.rotation.z+=br*0.015;bones.rua.rotation.z-=br*0.015;
   bones.sp.rotation.z+=Math.sin(t*0.5)*0.02;bones.sp.rotation.y+=Math.sin(t*0.37)*0.025;
-  target.position.set(cam.position.x+px*0.6+th*0.3,cam.position.y+py*0.4+th*0.3,cam.position.z);
+  target.position.set(cam.position.x+px*0.6,cam.position.y+py*0.4,cam.position.z);
   // blink
   if(t>nextBlink&&blinkT<0)blinkT=0;let b=0;if(blinkT>=0){blinkT+=dt;b=Math.sin(Math.min(1,blinkT/0.15)*Math.PI);if(blinkT>=0.15){blinkT=-1;nextBlink=t+2+Math.random()*3}}
   set("blink",b);
