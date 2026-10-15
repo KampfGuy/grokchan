@@ -5,7 +5,7 @@ const box=document.getElementById("av"),cv=document.getElementById("avc"),lbl=do
 const fail=e=>{console.warn("avatar disabled:",e);box.classList.add("hide");window.gcAvatar=null};
 const S={mode:"idle",talkUntil:0,emo:null,emoUntil:0};
 // queue calls made before load
-window.gcAvatar={thinking(){S.mode="thinking"},idle(){S.mode="idle"},speak(t){S.mode="idle";S.pending=t}};
+window.gcAvatar={thinking(){S.mode="thinking"},idle(){S.mode="idle"},speak(t){S.mode="idle";S.pending=t},stopTalk(){S.pending=null}};
 let renderer;
 try{renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});}catch(e){fail(e)}
 if(renderer){
@@ -45,16 +45,18 @@ loader.load("grokchan.vrm",g=>{
  const Z0=[0,0,0];
  // mirror helper: right side = left side with y,z negated
  const M=v=>[v[0],-v[1],-v[2]];
- const CROSS={lua:[-0.25,-0.8,-1.15],rua:[-0.25,0.8,1.15],lla:[0,-1.95,-0.6],rla:[0,1.95,0.55],lh:[0.2,-0.45,0.2],rh:[0.2,0.45,-0.2],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
  const HIPL={lua:[0,0.3,-0.85],lla:[0,-0.5,-1.6],lh:[0,0.1,0.3]};
  const HIPS={lua:HIPL.lua,rua:M(HIPL.lua),lla:HIPL.lla,rla:M(HIPL.lla),lh:HIPL.lh,rh:M(HIPL.lh),sp:[0,0,0],ch:[-0.03,0,0],nk:[0,0,0],hd:[-0.05,0,0.05]};
+ // resting pose: left hand on hip, right arm hanging straight down; head tilt kept
+ const CROSS={lua:HIPL.lua,lla:HIPL.lla,lh:HIPL.lh,rua:[0.05,0,1.2],rla:[0,0.05,0],rh:[0,0,0.05],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
+ for(const f of FN)for(const j of FS){CROSS["l"+f+j]=[0,0,-0.25];CROSS["r"+f+j]=[0,0,0.15]}
  const CHIN={lua:HIPL.lua,lla:HIPL.lla,lh:HIPL.lh,rua:[-0.4,0.65,1.0],rla:[0,2.25,-0.3],rh:[0.5,0,0.3],sp:[0,0,0],ch:[0,0,0],nk:[0,0,0],hd:[0.05,0,-0.1]};
  // two fingers (index+middle) extended on chin, others curled
  for(const f of["Ring","Little"])for(const j of FS)CHIN["r"+f+j]=[0,0,1.3];
  for(const f of["Index","Middle"])CHIN["r"+f+"Proximal"]=[0,0,0.15];
  // curl fingers slightly on the hips
  for(const sd of["l","r"])for(const f of FN)for(const j of FS){HIPS[sd+f+j]=[0,0,(sd==="l"?-1:1)*0.25];if(sd==="l")CHIN[sd+f+j]=[0,0,-0.25]}
- window.gcPose={CROSS,HIPS,CHIN};
+ window.gcPose={CROSS,REST:CROSS,HIPS,CHIN};
  const EMOS=["happy","angry","sad","relaxed","surprised"];
  function pick(t){const s=t.toLowerCase();
   if(/baka|hmph|idiot|dummy|stupid|annoying|ugh|it'?s not like/.test(s))return "angry";
@@ -62,8 +64,10 @@ loader.load("grokchan.vrm",g=>{
   if(/love|happy|glad|great|thank|yay|cute|proud|♥|❤|:\)|haha|hehe/.test(s))return "happy";
   if(/!\?|\?!|what\?|really\?|eh\?|whoa|wow/.test(s))return "surprised";
   return "relaxed"}
- const speak=t=>{const now=performance.now()/1000;S.mode="idle";S.talkUntil=now+Math.min(6,Math.max(3,t.length*0.05));S.talkPose=Math.random()<0.5?"HIPS":"CHIN";S.emo=pick(t);S.emoUntil=S.talkUntil+2.5};
- window.gcAvatar={thinking(){S.mode="thinking";S.emo=null},idle(){S.mode="idle"},speak};
+ // speak(t,manual): manual=true keeps talking until stopTalk() (driven by speech onend)
+ const speak=(t,manual)=>{const now=performance.now()/1000;S.mode="idle";S.talkUntil=manual?Infinity:now+Math.min(6,Math.max(3,t.length*0.05));S.talkPose=Math.random()<0.5?"HIPS":"CHIN";S.emo=pick(t);S.emoUntil=manual?Infinity:S.talkUntil+2.5};
+ const stopTalk=()=>{const now=performance.now()/1000;S.talkUntil=Math.min(S.talkUntil,now);S.emoUntil=Math.min(S.emoUntil,now+2)};
+ window.gcAvatar={thinking(){S.mode="thinking";S.emo=null},idle(){S.mode="idle"},speak,stopTalk};
  if(S.pending)speak(S.pending);
  let nextBlink=2,blinkT=-1,th=0;const clock=new THREE.Clock();const V=["aa","ih","ou","ee","oh"].filter(has);
  renderer.setAnimationLoop(()=>{if(document.hidden){clock.getDelta();return}const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
