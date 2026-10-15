@@ -10,8 +10,16 @@ if(window.marked&&window.DOMPurify){
  DOMPurify.addHook("afterSanitizeAttributes",n=>{if(n.tagName==="A"){n.setAttribute("target","_blank");n.setAttribute("rel","noopener noreferrer")}});
  md=t=>DOMPurify.sanitize(marked.parse(t),{ALLOWED_TAGS:["p","br","strong","em","b","i","code","pre","ul","ol","li","a","blockquote","h1","h2","h3","h4","del","hr"],ALLOWED_ATTR:["href","target","rel"],ALLOWED_URI_REGEXP:/^(https?:|mailto:)/i});
 }
-function add(c,t,s){const d=document.createElement("div");d.className="m "+c;
- if(c==="assistant"&&md&&t!=="…"){const b=document.createElement("div");b.className="md";b.innerHTML=md(t);d.append(b)}else d.textContent=t;if(s){const e=document.createElement("small");e.textContent=s;d.append(e)}$("log").append(d);d.scrollIntoView();return d}
+function add(c,t,s){const row=document.createElement("div");row.className="row "+c;
+ if(c!=="user"){const p=document.createElement("div");p.className="pfp sm";p.textContent="G";p.setAttribute("aria-hidden","true");row.append(p)}
+ const d=document.createElement("div");d.className="m";
+ if(c==="assistant"&&md){const b=document.createElement("div");b.className="md";b.innerHTML=md(t);d.append(b)}else d.textContent=t;
+ if(s){const e=document.createElement("small");e.textContent=s;d.append(e)}row.append(d);$("log").append(row);scrollLog();return row}
+function scrollLog(){const l=$("log");requestAnimationFrame(()=>l.scrollTop=l.scrollHeight)}
+let typingRow=null;
+function setStatus(s){const e=$("status");if(!e)return;e.className="status "+(s==="online"?"":s);e.querySelector("span").textContent=s==="typing"?"typing…":s==="speaking"?"speaking…":"online"}
+function showTyping(){hideTyping();typingRow=document.createElement("div");typingRow.className="row assistant";typingRow.innerHTML='<div class="pfp sm" aria-hidden="true">G</div><div class="m typing" aria-label="Grok-Chan is typing"><div class="dots"><span></span><span></span><span></span></div></div>';$("log").append(typingRow);scrollLog();setStatus("typing")}
+function hideTyping(){if(typingRow){typingRow.remove();typingRow=null}}
 // --- voice (free Web Speech API) ---
 const TTS=window.speechSynthesis||null;let ttsUnlocked=false,voice=null,jaVoice=null;
 const DESKTOP=!matchMedia("(pointer:coarse)").matches;
@@ -50,17 +58,17 @@ function unlockAudio(){try{actx=actx||new (window.AudioContext||window.webkitAud
  const b=actx.createBuffer(1,1,22050),s=actx.createBufferSource();s.buffer=b;s.connect(actx.destination);s.start()}catch(e){}}
 function kStop(){kId++;if(!vvAbort)cue(false);kw?.postMessage({type:"cancel"});kSrcs.forEach(s=>{try{s.onended=null;s.stop()}catch(e){}});kSrcs=[]}
 var kJob=null;
-function cue(on){const e=$("vcue");if(e)e.hidden=!on}
+function cue(on){} // replaced by the typing bubble
 function kHandle(m){const j=kJob;if(!j||m.id!==j.id)return;
  if(m.type==="error"){j.fail();return}
  if(m.type==="audio"){clearTimeout(j.to);cue(false);if(!actx||!m.audio.length){j.fail();return}
   const buf=actx.createBuffer(1,m.audio.length,m.sr);buf.copyToChannel(m.audio,0);
   const s=actx.createBufferSource();s.buffer=buf;s.playbackRate.value=KV.rate;s.connect(actx.destination);kSrcs.push(s);
-  s.onended=()=>{if(j.id===kId){window.gcAvatar?.stopTalk?.();kJob=null;window.gcVoiceLog?.push(["end",performance.now()])}};
+  s.onended=()=>{if(j.id===kId){window.gcAvatar?.stopTalk?.();setStatus("online");kJob=null;window.gcVoiceLog?.push(["end",performance.now()])}};
   if(actx.state!=="running")actx.resume();
-  s.start();window.gcAvatar?.speak(j.text,true);window.gcVoiceLog?.push(["start",performance.now(),buf.duration/KV.rate])}}
-function kSay(t,txt,fallback){kStop();const id=kId;cue(true);window.gcVoiceLog?.push(["gen",performance.now()]);
- kJob={id,text:t,fail(){if(kJob&&kJob.id===id){kJob=null;kStop();cue(false);window.gcVoiceLog?.push(["fallback",performance.now()]);fallback()}}};
+  j.show?.();s.start();window.gcAvatar?.speak(j.text,true);setStatus("speaking");window.gcVoiceLog?.push(["start",performance.now(),buf.duration/KV.rate])}}
+function kSay(t,txt,fallback,show=()=>{}){kStop();const id=kId;cue(true);window.gcVoiceLog?.push(["gen",performance.now()]);
+ kJob={id,text:t,show,fail(){if(kJob&&kJob.id===id){kJob=null;kStop();cue(false);show();window.gcVoiceLog?.push(["fallback",performance.now()]);fallback()}}};
  kJob.to=setTimeout(()=>kJob?.id===id&&kJob.fail(),25000); // too slow -> browser voice
  kw.postMessage({type:"gen",id,text:txt,voice:KV.voice})}
 // --- Japanese voice: VOICEVOX:四国めたん（ツンツン） via the Worker's /tts (tts.quest) ---
@@ -69,39 +77,51 @@ const SILENT="data:audio/mpeg;base64,SUQzBAAAAAAAIlRTU0UAAAAOAAADTGF2ZjYxLjcuMTA
 let vvPrimed=false,vvId=0,vvUrl=null,vvAbort=null;
 function primeAudio(){if(vvPrimed)return;vvPrimed=true;try{vvAudio.src=SILENT;vvAudio.muted=true;const p=vvAudio.play();p&&p.then(()=>{vvAudio.pause();vvAudio.muted=false}).catch(()=>{vvAudio.muted=false;vvPrimed=false})}catch(e){vvPrimed=false}}
 function vvStop(){vvId++;vvAbort?.abort();vvAbort=null;try{vvAudio.onplaying=vvAudio.onended=vvAudio.onerror=null;vvAudio.pause()}catch(e){}if(vvUrl){URL.revokeObjectURL(vvUrl);vvUrl=null}}
-async function vvSay(t,ja,fallback){vvStop();const id=vvId,av=window.gcAvatar,L=window.gcVoiceLog;cue(true);L?.push(["vv-req",performance.now()]);
- let failed=false;const fail=why=>{if(failed||id!==vvId)return;failed=true;cue(false);L?.push(["vv-fail",performance.now(),why]);vvStop();fallback()};
+async function vvSay(t,ja,fallback,show=()=>{}){vvStop();const id=vvId,av=window.gcAvatar,L=window.gcVoiceLog;cue(true);L?.push(["vv-req",performance.now()]);
+ let failed=false;const fail=why=>{if(failed||id!==vvId)return;failed=true;cue(false);show();L?.push(["vv-fail",performance.now(),why]);vvStop();fallback()};
  const ac=new AbortController();vvAbort=ac;const to=setTimeout(()=>{ac.abort();fail("timeout")},32000);
  try{const r=await fetch(WORKER_URL+"/tts",{method:"POST",signal:ac.signal,headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({text:ja})});
   clearTimeout(to);if(id!==vvId)return;if(!r.ok||!/audio/.test(r.headers.get("content-type")||""))return fail("http "+r.status);
   const b=await r.blob();if(id!==vvId)return;vvUrl=URL.createObjectURL(b);L?.push(["vv-audio",performance.now(),b.size,r.headers.get("X-TTS-Ms")]);
   let started=false;
-  vvAudio.onplaying=()=>{if(id!==vvId||started)return;started=true;cue(false);av?.speak(t,true);L?.push(["start",performance.now()])};
-  vvAudio.onended=()=>{if(id!==vvId)return;av?.stopTalk?.();L?.push(["end",performance.now(),vvAudio.duration]);vvStop()};
+  vvAudio.onplaying=()=>{if(id!==vvId||started)return;started=true;cue(false);av?.speak(t,true);setStatus("speaking");L?.push(["start",performance.now()])};
+  vvAudio.onended=()=>{if(id!==vvId)return;av?.stopTalk?.();setStatus("online");L?.push(["end",performance.now(),vvAudio.duration]);vvStop()};
   vvAudio.onerror=()=>fail("media error");
-  vvAudio.muted=false;vvAudio.src=vvUrl;await vvAudio.play()}
+  vvAudio.muted=false;vvAudio.src=vvUrl;show();await vvAudio.play()}
  catch(e){clearTimeout(to);if(id===vvId)fail(e.name==="AbortError"?"timeout":"play: "+e.name)}}
-function say(t,ja){const av=window.gcAvatar;if(TTS)TTS.cancel();kStop();vvStop();
- const txt=plain(t);if(vmode==="off"||!txt){av?.speak(t);return}
- if(vmode==="ja"&&ja){vvSay(t,ja,()=>{if(jaVoice)sayBrowser(t,ja,jaVoice,1.45,1.05);else sayBrowser(t,txt)});return}
- if(vmode==="en"&&kReady&&actx){kSay(t,txt,()=>sayBrowser(t,txt));return}
- sayBrowser(t,txt)}
+// show(): reveal the reply text. With a voice, it is revealed exactly when the audio is ready.
+function say(t,ja,show=()=>{}){const av=window.gcAvatar;if(TTS)TTS.cancel();kStop();vvStop();
+ const txt=plain(t);if(vmode==="off"||!txt){show();av?.speak(t);return}
+ if(vmode==="ja"&&ja){vvSay(t,ja,()=>{if(jaVoice)sayBrowser(t,ja,jaVoice,1.45,1.05);else sayBrowser(t,txt)},show);return}
+ if(vmode==="en"&&kReady&&actx){kSay(t,txt,()=>sayBrowser(t,txt),show);return}
+ show();sayBrowser(t,txt)}
 function sayBrowser(t,txt,v=voice,pitch=1.2,rate=1){const av=window.gcAvatar;if(!TTS){av?.speak(t);return}
  const u=new SpeechSynthesisUtterance(txt);if(v){u.voice=v;u.lang=v.lang}else u.lang="en-US";u.pitch=pitch;u.rate=rate;
  let started=false,done=false;window.gcVoiceLog?.push(["tts",performance.now(),u.lang,v?.name||null]);
- u.onstart=()=>{started=true;av?.speak(t,true);window.gcVoiceLog?.push(["start",performance.now()])};
- u.onend=u.onerror=()=>{if(done)return;done=true;if(started)av?.stopTalk?.();else av?.speak(t);window.gcVoiceLog?.push(["end",performance.now()])};
+ u.onstart=()=>{started=true;av?.speak(t,true);setStatus("speaking");window.gcVoiceLog?.push(["start",performance.now()])};
+ u.onend=u.onerror=()=>{if(done)return;done=true;setStatus("online");if(started)av?.stopTalk?.();else av?.speak(t);window.gcVoiceLog?.push(["end",performance.now()])};
  TTS.speak(u);
- setTimeout(()=>{if(!started&&!done){done=true;TTS.cancel();av?.speak(t);window.gcVoiceLog?.push(["timer-fallback",performance.now()])}},2500)} // no voices / blocked: timer fallback
+ setTimeout(()=>{if(!started&&!done){done=true;TTS.cancel();setStatus("online");av?.speak(t);window.gcVoiceLog?.push(["timer-fallback",performance.now()])}},2500)} // no voices / blocked: timer fallback
 $("new").onclick=()=>{hist=[];$("log").innerHTML=""};
-$("f").onsubmit=async e=>{e.preventDefault();unlockTTS();const q=$("q").value.trim();if(!q)return;$("q").value="";
- hist.push({role:"user",content:q});add("user",q);if(TTS)TTS.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();const w=add("assistant","…");window.gcAvatar?.thinking();
+$("f").onsubmit=async e=>{e.preventDefault();unlockTTS();const q=$("q").value.trim();if(!q)return;
+ if(!$("pw").value){showGate();return}
+ $("q").value="";autosize();
+ hist.push({role:"user",content:q});add("user",q);if(TTS)TTS.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();showTyping();window.gcAvatar?.thinking();
  try{const r=await fetch(WORKER_URL+"/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({messages:hist.slice(-20),model:$("model").value})});
-  const o=await r.json();w.remove();window.gcAvatar?.idle();
-  if(r.status===401){add("err","Wrong password.");hist.pop();return}
-  if(!r.ok){add("err",o.error||"Error");hist.pop();return}
-  hist.push({role:"assistant",content:o.reply});const sp=splitJa(o.reply);add("assistant",sp.en,o.model);say(sp.en,sp.ja)}
- catch(x){w.remove();window.gcAvatar?.idle();hist.pop();add("err","Network error: "+x.message)}};
+  const o=await r.json();window.gcAvatar?.idle();
+  if(r.status===401){hideTyping();setStatus("online");hist.pop();$("log").lastElementChild?.remove();$("q").value=q;showGate(true);return}
+  if(!r.ok){hideTyping();setStatus("online");add("err",o.error||"Error");hist.pop();return}
+  hist.push({role:"assistant",content:o.reply});const sp=splitJa(o.reply);
+  let shown=false;const show=()=>{if(shown)return;shown=true;hideTyping();if(!$("status").classList.contains("speaking"))setStatus("online");add("assistant",sp.en,o.model)};
+  say(sp.en,sp.ja,show)}
+ catch(x){hideTyping();setStatus("online");window.gcAvatar?.idle();hist.pop();add("err","Network error: "+x.message)}};
+// password gate
+function showGate(bad){$("gate").hidden=false;$("gerr").hidden=!bad;setTimeout(()=>$("pw").focus(),50)}
+$("gf").onsubmit=e=>{e.preventDefault();const v=$("pw").value.trim();if(!v)return;localStorage.setItem("gc_pw",v);$("gate").hidden=true;unlockTTS();if($("q").value.trim())$("f").requestSubmit();else $("q").focus()};
+if(!$("pw").value)showGate();
+// input autosize
+function autosize(){const q=$("q");q.style.height="auto";q.style.height=Math.min(q.scrollHeight,140)+"px"}
+$("q").addEventListener("input",autosize);
 $("q").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("f").requestSubmit()}};
 window.gcVoiceLog=[];
 addEventListener("pointerdown",()=>unlockTTS(),{once:true,capture:true}); // preload the voice model on the first tap
