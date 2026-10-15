@@ -24,7 +24,7 @@ loader.load("grokchan.vrm",g=>{
  scene.add(vrm.scene);vrm.scene.traverse(o=>o.frustumCulled=false);
  const head=vrm.humanoid.getNormalizedBoneNode("head");vrm.scene.updateMatrixWorld(true);
  const hp=new THREE.Vector3();head.getWorldPosition(hp);
- cam.position.set(0,hp.y-0.08,1.25);cam.lookAt(0,hp.y-0.15,0);
+ cam.position.set(0,hp.y,1.45);cam.lookAt(0,hp.y-0.12,0);
  if(vrm.lookAt)vrm.lookAt.target=target;
  lbl.remove();
  const em=vrm.expressionManager,has=n=>!!em?.getExpression(n);
@@ -45,7 +45,7 @@ loader.load("grokchan.vrm",g=>{
  renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
   th+=((S.mode==="thinking"?1:0)-th)*Math.min(1,dt*4);
   bones.lua.rotation.z=-1.2+Math.sin(t*1.3)*0.02;bones.rua.rotation.z=1.2-Math.sin(t*1.3)*0.02;
-  bones.lla.rotation.z=-0.15;bones.rla.rotation.z=0.15-th*1.6;bones.rua.rotation.x=-th*0.6;bones.rla.rotation.y=th*0.4;
+  bones.rua.rotation.z+=-th*0.25;bones.rua.rotation.y=th*0.5;bones.lla.rotation.z=-0.15;bones.rla.rotation.z=0.15;bones.rla.rotation.y=th*2.2;
   if(bones.ch)bones.ch.rotation.x=Math.sin(t*1.6)*0.02;
   bones.sp.rotation.z=Math.sin(t*0.5)*0.025;bones.sp.rotation.y=Math.sin(t*0.37)*0.03;
   bones.hd.rotation.z=th*0.15;
