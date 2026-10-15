@@ -9,7 +9,7 @@ window.gcAvatar={thinking(){S.mode="thinking"},idle(){S.mode="idle"},speak(t){S.
 let renderer;
 try{renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});}catch(e){fail(e)}
 if(renderer){
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;
+const mob=matchMedia("(pointer:coarse)").matches;renderer.setPixelRatio(Math.min(devicePixelRatio,mob?2:1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(30,1,0.1,20);
 scene.add(new THREE.HemisphereLight(0xffeeff,0x443355,1.6));const dl=new THREE.DirectionalLight(0xffffff,1.6);dl.position.set(1,2,2);scene.add(dl);
 const target=new THREE.Object3D();scene.add(target);
@@ -30,7 +30,11 @@ loader.load("grokchan.vrm",g=>{
  const em=vrm.expressionManager,has=n=>!!em?.getExpression(n);
  const set=(n,v)=>has(n)&&em.setValue(n,v);
  const B=n=>vrm.humanoid.getNormalizedBoneNode(n);
- const bones={lua:B("leftUpperArm"),rua:B("rightUpperArm"),lla:B("leftLowerArm"),rla:B("rightLowerArm"),sp:B("spine"),ch:B("chest"),nk:B("neck"),hd:head};
+ const bones={lua:B("leftUpperArm"),rua:B("rightUpperArm"),lla:B("leftLowerArm"),rla:B("rightLowerArm"),sp:B("spine"),ch:B("chest"),nk:B("neck"),hd:head,lh:B("leftHand"),rh:B("rightHand")};
+ const Z0=[0,0,0];
+ const CROSS={lua:[-0.5,-0.8,-1.15],rua:[-0.5,0.75,1.1],lla:[0,-2.0,-1.2],rla:[0,1.9,1.05],lh:[0.3,0,0.3],rh:[0.3,0,-0.3],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
+ const THINK={lua:[0,0,-1.2],rua:[0,0.5,0.95],lla:[0,0,-0.15],rla:[0,2.2,0.15],lh:[0,0,0],rh:[0,0,0],sp:[0,0,0],ch:[0,0,0],nk:[0,0,0],hd:[0,0,0.15]};
+ window.gcPose={CROSS,THINK};
  const EMOS=["happy","angry","sad","relaxed","surprised"];
  function pick(t){const s=t.toLowerCase();
   if(/baka|hmph|idiot|dummy|stupid|annoying|ugh|it'?s not like/.test(s))return "angry";
@@ -42,13 +46,13 @@ loader.load("grokchan.vrm",g=>{
  window.gcAvatar={thinking(){S.mode="thinking";S.emo=null},idle(){S.mode="idle"},speak};
  if(S.pending)speak(S.pending);
  let nextBlink=2,blinkT=-1,th=0;const clock=new THREE.Clock();const V=["aa","ih","ou","ee","oh"].filter(has);
- renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
+ renderer.setAnimationLoop(()=>{if(document.hidden){clock.getDelta();return}const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
   th+=((S.mode==="thinking"?1:0)-th)*Math.min(1,dt*4);
-  bones.lua.rotation.z=-1.2+Math.sin(t*1.3)*0.02;bones.rua.rotation.z=1.2-Math.sin(t*1.3)*0.02;
-  bones.rua.rotation.z+=-th*0.25;bones.rua.rotation.y=th*0.5;bones.lla.rotation.z=-0.15;bones.rla.rotation.z=0.15;bones.rla.rotation.y=th*2.2;
-  if(bones.ch)bones.ch.rotation.x=Math.sin(t*1.6)*0.02;
-  bones.sp.rotation.z=Math.sin(t*0.5)*0.025;bones.sp.rotation.y=Math.sin(t*0.37)*0.03;
-  bones.hd.rotation.z=th*0.15;
+  const P=window.gcPoseOverride||CROSS,br=Math.sin(t*1.6);
+  for(const k in bones){const b=bones[k];if(!b)continue;const a=P[k]||Z0,c=THINK[k]||Z0;
+   b.rotation.set(a[0]+(c[0]-a[0])*th,a[1]+(c[1]-a[1])*th,a[2]+(c[2]-a[2])*th)}
+  if(bones.ch)bones.ch.rotation.x+=br*0.02;bones.lua.rotation.z+=br*0.015;bones.rua.rotation.z-=br*0.015;
+  bones.sp.rotation.z+=Math.sin(t*0.5)*0.02;bones.sp.rotation.y+=Math.sin(t*0.37)*0.025;
   target.position.set(cam.position.x+px*0.6+th*0.3,cam.position.y+py*0.4+th*0.3,cam.position.z);
   // blink
   if(t>nextBlink&&blinkT<0)blinkT=0;let b=0;if(blinkT>=0){blinkT+=dt;b=Math.sin(Math.min(1,blinkT/0.15)*Math.PI);if(blinkT>=0.15){blinkT=-1;nextBlink=t+2+Math.random()*3}}
