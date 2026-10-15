@@ -3,7 +3,15 @@ const MODELS=["nvidia/nemotron-3-super-120b-a12b:free","thinkingmachines/inkling
 const $=id=>document.getElementById(id);let hist=[];
 MODELS.forEach(m=>$("model").add(new Option(m,m)));
 $("pw").value=localStorage.getItem("gc_pw")||"";$("pw").onchange=()=>localStorage.setItem("gc_pw",$("pw").value);
-function add(c,t,s){const d=document.createElement("div");d.className="m "+c;d.textContent=t;if(s){const e=document.createElement("small");e.textContent=s;d.append(e)}$("log").append(d);d.scrollIntoView();return d}
+const esc=t=>t.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let md=null;
+if(window.marked&&window.DOMPurify){
+ marked.use({gfm:true,breaks:true,renderer:{html(t){return esc(typeof t==="string"?t:t.text||t.raw||"")}}});
+ DOMPurify.addHook("afterSanitizeAttributes",n=>{if(n.tagName==="A"){n.setAttribute("target","_blank");n.setAttribute("rel","noopener noreferrer")}});
+ md=t=>DOMPurify.sanitize(marked.parse(t),{ALLOWED_TAGS:["p","br","strong","em","b","i","code","pre","ul","ol","li","a","blockquote","h1","h2","h3","h4","del","hr"],ALLOWED_ATTR:["href","target","rel"],ALLOWED_URI_REGEXP:/^(https?:|mailto:)/i});
+}
+function add(c,t,s){const d=document.createElement("div");d.className="m "+c;
+ if(c==="assistant"&&md&&t!=="…"){const b=document.createElement("div");b.className="md";b.innerHTML=md(t);d.append(b)}else d.textContent=t;if(s){const e=document.createElement("small");e.textContent=s;d.append(e)}$("log").append(d);d.scrollIntoView();return d}
 $("new").onclick=()=>{hist=[];$("log").innerHTML=""};
 $("f").onsubmit=async e=>{e.preventDefault();const q=$("q").value.trim();if(!q)return;$("q").value="";
  hist.push({role:"user",content:q});add("user",q);const w=add("assistant","…");window.gcAvatar?.thinking();
