@@ -143,7 +143,7 @@ $("f").onsubmit=async e=>{e.preventDefault();unlockTTS();const q=$("q").value.tr
 // password gate
 function showGate(bad){$("gate").hidden=false;$("gerr").hidden=!bad;setTimeout(()=>$("pw").focus(),50)}
 $("gf").onsubmit=e=>{e.preventDefault();const v=$("pw").value.trim();if(!v)return;localStorage.setItem("gc_pw",v);$("gate").hidden=true;unlockTTS();if($("q").value.trim())$("f").requestSubmit();else $("q").focus()};
-if(!$("pw").value)showGate();
+// PW_DISABLED if(!$("pw").value)showGate();
 // input autosize
 function autosize(){const q=$("q");q.style.height="auto";q.style.height=Math.min(q.scrollHeight,140)+"px"}
 $("q").addEventListener("input",autosize);
