@@ -44,7 +44,7 @@ function unlockTTS(){unlockAudio();primeAudio();if(vmode==="en")initKokoro();if(
 function splitJa(r){const m=r.match(/<ja>([\s\S]*?)(?:<\/ja>|$)/i);let en=r,ja="";
  if(m){ja=m[1].trim();en=r.slice(0,m.index)+r.slice(m.index+m[0].length)}
  en=en.replace(/<\/?ja>?/gi,"").replace(/<j?a?$/i,"").trim();
- ja=ja.replace(/<[^>]*>?/g,"").replace(/[*_~`#]+/g,"").replace(/[\p{Extended_Pictographic}\uFE0F\u200d]/gu,"").trim();
+ ja=ja.replace(/<[^>]*>?/g,"").replace(/[*_~`#<>]+/g,"").replace(/[\p{Extended_Pictographic}\uFE0F\u200d]/gu,"").trim();
  return{en:en||r.replace(/<\/?ja>/gi,"").trim(),ja}}
 function plain(t){return t.replace(/```[\s\S]*?```/g," code block. ").replace(/`([^`]*)`/g,"$1").replace(/!\[[^\]]*\]\([^)]*\)/g,"").replace(/\[([^\]]*)\]\([^)]*\)/g,"$1")
  .replace(/<[^>]+>/g,"").replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+[.)])\s+/gm,"").replace(/(\*\*|__|\*|_|~~)(?=\S)([\s\S]*?\S)\1/g,"$2")
