@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,ROLE,EXPR,boneName} from "./poses.js?v=1792113139";
+import {POSES,ROLE,EXPR,boneName} from "./poses.js?v=1792113939";
 const box=document.getElementById("av"),cv=document.getElementById("avc"),lbl=document.getElementById("avl");
 const fail=e=>{console.warn("avatar disabled:",e);box.classList.add("hide");window.gcAvatar=null};
 const S={mode:"idle",talkUntil:0,emo:null,emoUntil:0};
