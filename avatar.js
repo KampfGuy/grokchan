@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
+import {POSES,ROLE,boneName} from "./poses.js?v=1792109360";
 const box=document.getElementById("av"),cv=document.getElementById("avc"),lbl=document.getElementById("avl");
 const fail=e=>{console.warn("avatar disabled:",e);box.classList.add("hide");window.gcAvatar=null};
 const S={mode:"idle",talkUntil:0,emo:null,emoUntil:0};
@@ -39,24 +40,13 @@ loader.load("grokchan.vrm",g=>{
  const em=vrm.expressionManager,has=n=>!!em?.getExpression(n);
  const set=(n,v)=>has(n)&&em.setValue(n,v);
  const B=n=>vrm.humanoid.getNormalizedBoneNode(n);
- const bones={lua:B("leftUpperArm"),rua:B("rightUpperArm"),lla:B("leftLowerArm"),rla:B("rightLowerArm"),sp:B("spine"),ch:B("chest"),nk:B("neck"),hd:head,lh:B("leftHand"),rh:B("rightHand")};
- const FN=["Index","Middle","Ring","Little"],FS=["Proximal","Intermediate","Distal"];
- for(const sd of["left","right"])for(const f of FN)for(const j of FS){const n=B(sd+f+j);if(n)bones[(sd[0])+f+j]=n}
  const Z0=[0,0,0];
- // mirror helper: right side = left side with y,z negated
- const M=v=>[v[0],-v[1],-v[2]];
- const HIPL={lua:[0,0.3,-0.85],lla:[0,-0.5,-1.6],lh:[0,0.1,0.3]};
- const HIPS={lua:HIPL.lua,rua:M(HIPL.lua),lla:HIPL.lla,rla:M(HIPL.lla),lh:HIPL.lh,rh:M(HIPL.lh),sp:[0,0,0],ch:[-0.03,0,0],nk:[0,0,0],hd:[-0.05,0,0.05]};
- // resting pose: left hand on hip, right arm hanging straight down; head tilt kept
- const CROSS={lua:HIPL.lua,lla:HIPL.lla,lh:HIPL.lh,rua:[0.05,0,1.2],rla:[0,0.05,0],rh:[0,0,0.05],sp:[0,0.05,0.05],ch:[0,0.04,0.04],nk:[0,0,0.05],hd:[0,0.1,0.12]};
- for(const f of FN)for(const j of FS){CROSS["l"+f+j]=[0,0,-0.25];CROSS["r"+f+j]=[0,0,0.15]}
- const CHIN={lua:HIPL.lua,lla:HIPL.lla,lh:HIPL.lh,rua:[-0.4,0.65,1.0],rla:[0,2.25,-0.3],rh:[0.5,0,0.3],sp:[0,0,0],ch:[0,0,0],nk:[0,0,0],hd:[0.05,0,-0.1]};
- // two fingers (index+middle) extended on chin, others curled
- for(const f of["Ring","Little"])for(const j of FS)CHIN["r"+f+j]=[0,0,1.3];
- for(const f of["Index","Middle"])CHIN["r"+f+"Proximal"]=[0,0,0.15];
- // curl fingers slightly on the hips
- for(const sd of["l","r"])for(const f of FN)for(const j of FS){HIPS[sd+f+j]=[0,0,(sd==="l"?-1:1)*0.25];if(sd==="l")CHIN[sd+f+j]=[0,0,-0.25]}
- window.gcPose={CROSS,REST:CROSS,HIPS,CHIN};
+ // drive every bone used by any pose (see poses.js)
+ const bones={};for(const P of Object.values(POSES))for(const k in P){const n=boneName(k);if(!bones[n]){const b=B(n);if(b)bones[n]=b}}
+ const norm=P=>{const o={};for(const k in P)o[boneName(k)]=P[k];return o};
+ const NP={};for(const n in POSES)NP[n]=norm(POSES[n]);
+ const CROSS=NP[ROLE.idle]||NP.REST;
+ window.gcPose={...NP,CROSS,REST:CROSS};
  const EMOS=["happy","angry","sad","relaxed","surprised"];
  function pick(t){const s=t.toLowerCase();
   if(/baka|hmph|idiot|dummy|stupid|annoying|ugh|it'?s not like/.test(s))return "angry";
@@ -65,7 +55,7 @@ loader.load("grokchan.vrm",g=>{
   if(/!\?|\?!|what\?|really\?|eh\?|whoa|wow/.test(s))return "surprised";
   return "relaxed"}
  // speak(t,manual): manual=true keeps talking until stopTalk() (driven by speech onend)
- const speak=(t,manual)=>{const now=performance.now()/1000;S.mode="idle";S.talkUntil=manual?Infinity:now+Math.min(6,Math.max(3,t.length*0.05));S.talkPose=Math.random()<0.5?"HIPS":"CHIN";S.emo=pick(t);S.emoUntil=manual?Infinity:S.talkUntil+2.5};
+ const speak=(t,manual)=>{const now=performance.now()/1000;S.mode="idle";S.talkUntil=manual?Infinity:now+Math.min(6,Math.max(3,t.length*0.05));S.talkPose=Math.random()<0.5?ROLE.talkA:ROLE.talkB;S.emo=pick(t);S.emoUntil=manual?Infinity:S.talkUntil+2.5};
  const stopTalk=()=>{const now=performance.now()/1000;S.talkUntil=Math.min(S.talkUntil,now);S.emoUntil=Math.min(S.emoUntil,now+2)};
  window.gcAvatar={thinking(){S.mode="thinking";S.emo=null},idle(){S.mode="idle"},speak,stopTalk};
  if(S.pending)speak(S.pending);
@@ -75,11 +65,12 @@ loader.load("grokchan.vrm",g=>{
   const tp=f||(nowP<S.talkUntil?S.talkPose:null);
   if(tp)S.lastPose=tp;
   th+=((tp?1:0)-th)*Math.min(1,dt*12); // ~0.25 s blend
-  const A=CROSS,C=window.gcPose[S.lastPose||"HIPS"],br=Math.sin(t*1.6);
+  const A=CROSS,C=window.gcPose[S.lastPose||ROLE.talkA]||NP.HIPS,br=Math.sin(t*1.6);
   for(const k in bones){const b=bones[k];if(!b)continue;const a=A[k]||Z0,c=C[k]||Z0;
    b.rotation.set(a[0]+(c[0]-a[0])*th,a[1]+(c[1]-a[1])*th,a[2]+(c[2]-a[2])*th)}
-  if(bones.ch)bones.ch.rotation.x+=br*0.02;bones.lua.rotation.z+=br*0.015;bones.rua.rotation.z-=br*0.015;
-  bones.sp.rotation.z+=Math.sin(t*0.5)*0.02;bones.sp.rotation.y+=Math.sin(t*0.37)*0.025;
+  const bc=bones.chest,bl=bones.leftUpperArm,brr=bones.rightUpperArm,bs=bones.spine||B("spine");
+  if(bc)bc.rotation.x+=br*0.02;if(bl)bl.rotation.z+=br*0.015;if(brr)brr.rotation.z-=br*0.015;
+  if(bs){bs.rotation.z+=Math.sin(t*0.5)*0.02;bs.rotation.y+=Math.sin(t*0.37)*0.025}
   target.position.set(cam.position.x+px*0.6,cam.position.y+py*0.4,cam.position.z);
   // blink
   if(t>nextBlink&&blinkT<0)blinkT=0;let b=0;if(blinkT>=0){blinkT+=dt;b=Math.sin(Math.min(1,blinkT/0.15)*Math.PI);if(blinkT>=0.15){blinkT=-1;nextBlink=t+2+Math.random()*3}}

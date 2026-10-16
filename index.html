@@ -3,7 +3,7 @@
 <meta name="theme-color" content="#0f0d13"><title>Grok-Chan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1792107915">
+<link rel="stylesheet" href="style.css?v=1792109360">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/","@pixiv/three-vrm":"https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.1.0/lib/three-vrm.module.min.js"}}</script></head>
 <body>
 <div id="app">
@@ -15,6 +15,7 @@
   <div class="actions">
    <select id="model" aria-label="Model" title="Model"></select>
    <button id="spk" class="pill" type="button" aria-label="Voice mode">🔊 JP</button>
+   <a href="pose.html" id="poselink" class="icon" aria-label="Pose editor" title="Pose editor"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M5 9l7 1.5L19 9M12 10.5V15m0 0l-3.5 6M12 15l3.5 6"/></svg></a>
    <button id="new" class="icon" type="button" aria-label="New chat" title="New chat"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg></button>
   </div>
  </header>
@@ -32,4 +33,4 @@
 </div>
 <div id="gate" hidden><form id="gf" class="card"><div class="pfp big">G</div><h2>Welcome back</h2><p>Enter the access password to chat with Grok-Chan.</p>
  <input id="pw" type="password" placeholder="Access password" autocomplete="current-password"><button type="submit" class="primary">Enter</button><div id="gerr" class="gerr" hidden>Wrong password — try again.</div></form></div>
-<script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script><script src="app.js?v=1792107915"></script><script type="module" src="avatar.js?v=1792107915"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/marked@14.1.4/marked.min.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script><script src="app.js?v=1792109360"></script><script type="module" src="avatar.js?v=1792109360"></script></body></html>
