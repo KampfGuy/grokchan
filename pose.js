@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,ROLE,PERSONA_ROLE,boneName} from "./poses.js?v=1792119685";
+import {POSES,ROLE,PERSONA_ROLE,boneName} from "./poses.js?v=1792121968";
 const $=id=>document.getElementById(id),D=180/Math.PI;
 const toast=t=>{let e=$("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.append(e)}e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,1800)};
 const FING=["Thumb","Index","Middle","Ring","Little"],SEG={Thumb:["Metacarpal","Proximal","Distal"],_:["Proximal","Intermediate","Distal"]};
@@ -73,7 +73,7 @@ function importObj(o){if(!o||typeof o!=="object"||!o.bones)throw new Error("not 
   if(v&&v.every(Number.isFinite))pose[n]=v}
  expr={};if(o.expressions&&typeof o.expressions==="object")for(const [k,v] of Object.entries(o.expressions)){const n=+v;if(Number.isFinite(n))expr[k]=Math.max(0,Math.min(1,n))}look={yaw:+o.look?.yaw||0,pitch:+o.look?.pitch||0};renderExpr();
  if(o.name)$("pname").value=String(o.name).slice(0,40);if(["idle","talkA","talkB"].includes(o.tag)){tag=o.tag}renderUI();toast("Imported "+(o.name||"pose"))}
-const fname=()=>"grokchan-pose-"+(($("pname").value.trim()||"pose").toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")||"pose")+".json";
+const fname=()=>"kanyachan-pose-"+(($("pname").value.trim()||"pose").toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")||"pose")+".json";
 const fileBlob=()=>new Blob([JSON.stringify(exportObj(),null,2)],{type:"application/json"});
 function download(){const a=document.createElement("a");a.href=URL.createObjectURL(fileBlob());a.download=fname();document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);toast("Downloaded "+fname())}
 async function share(){const f=new File([fileBlob()],fname(),{type:"application/json"});
@@ -134,7 +134,7 @@ async function savePicture(opt){opt=opt||{};const bg=opt.bg??$("picbg").value,co
  marker.visible=false;scene.background=bg==="solid"?new THREE.Color(col):null;renderer.setPixelRatio(1);renderer.setSize(W,H,false);cam.aspect=W/H;cam.updateProjectionMatrix();
  renderer.render(scene,cam);const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
  marker.visible=mv;scene.background=ob;renderer.setPixelRatio(pr);cam.aspect=asp;resize();
- const name="grokchan-"+(($("pname").value.trim()||"picture").toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")||"picture")+".png";
+ const name="kanyachan-"+(($("pname").value.trim()||"picture").toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")||"picture")+".png";
  window.gcLastPic={name,size:blob.size,W,H};if(opt.noSave)return blob;
  const f=new File([blob],name,{type:"image/png"});
  if(opt.share!==false&&navigator.canShare?.({files:[f]})){try{await navigator.share({files:[f],title:name});return blob}catch(e){if(e.name==="AbortError")return blob}}

@@ -18,7 +18,7 @@ function add(c,t,s){const row=document.createElement("div");row.className="row "
 function scrollLog(){const l=$("log");requestAnimationFrame(()=>l.scrollTop=l.scrollHeight)}
 let typingRow=null;
 function setStatus(s){const e=$("status");if(!e)return;e.className="status "+(s==="online"?"":s);e.querySelector("span").textContent=s==="typing"?"typing…":s==="speaking"?"speaking…":"online"}
-function showTyping(){hideTyping();typingRow=document.createElement("div");typingRow.className="row assistant";typingRow.innerHTML='<div class="pfp sm" aria-hidden="true"><img src="pfp.jpg" alt=""></div><div class="m typing" aria-label="Grok-Chan is typing"><div class="dots"><span></span><span></span><span></span></div></div>';$("log").append(typingRow);scrollLog();setStatus("typing")}
+function showTyping(){hideTyping();typingRow=document.createElement("div");typingRow.className="row assistant";typingRow.innerHTML='<div class="pfp sm" aria-hidden="true"><img src="pfp.jpg" alt=""></div><div class="m typing" aria-label="Kanya-Chan is typing"><div class="dots"><span></span><span></span><span></span></div></div>';$("log").append(typingRow);scrollLog();setStatus("typing")}
 function hideTyping(){if(typingRow){typingRow.remove();typingRow=null}}
 // --- voice (free Web Speech API) ---
 const TTS=window.speechSynthesis||null;let ttsUnlocked=false,voice=null,jaVoice=null;

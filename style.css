@@ -31,7 +31,7 @@ h1{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
 /* chat */
 #chat{grid-area:chat;display:flex;flex-direction:column;min-height:0;background:var(--bg)}
 #log{flex:1;overflow-y:auto;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3);scroll-behavior:smooth;overscroll-behavior:contain}
-#log:empty::before{content:"Say hi to Grok-Chan 👋";margin:auto;color:var(--mute);font-size:13px}
+#log:empty::before{content:"Say hi to Kanya-Chan 👋";margin:auto;color:var(--mute);font-size:13px}
 .row{display:flex;align-items:flex-end;gap:var(--s2);animation:in .28s var(--ease) both}
 .row.user{justify-content:flex-end}
 .m{max-width:min(78%,560px);padding:10px 14px;border-radius:var(--r-lg);white-space:pre-wrap;word-wrap:break-word;line-height:1.5}
@@ -95,5 +95,5 @@ a.icon{text-decoration:none}
 
 .pfp{overflow:hidden}.pfp img{width:100%;height:100%;object-fit:cover;object-position:50% 35%;display:block}
 /* classroom background */
-#av,body[data-persona] #av{background:linear-gradient(180deg,rgba(15,13,19,.55) 0%,rgba(15,13,19,.15) 30%,rgba(15,13,19,.25) 65%,rgba(15,13,19,.85) 100%),url("bg-classroom.jpg?v=1792113939") center 40%/cover no-repeat,var(--bg)}
-@media(max-width:899px){#av,body[data-persona] #av{background:linear-gradient(180deg,rgba(15,13,19,.6) 0%,rgba(15,13,19,.2) 28%,rgba(15,13,19,.3) 70%,rgba(15,13,19,.9) 100%),url("bg-classroom.jpg?v=1792113939") 50% 40%/cover no-repeat,var(--bg)}}
+#av,body[data-persona] #av{background:linear-gradient(180deg,rgba(15,13,19,.55) 0%,rgba(15,13,19,.15) 30%,rgba(15,13,19,.25) 65%,rgba(15,13,19,.85) 100%),url("bg-classroom.jpg?v=1792121968") center 40%/cover no-repeat,var(--bg)}
+@media(max-width:899px){#av,body[data-persona] #av{background:linear-gradient(180deg,rgba(15,13,19,.6) 0%,rgba(15,13,19,.2) 28%,rgba(15,13,19,.3) 70%,rgba(15,13,19,.9) 100%),url("bg-classroom.jpg?v=1792121968") 50% 40%/cover no-repeat,var(--bg)}}
