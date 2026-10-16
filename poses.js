@@ -19,7 +19,14 @@ export const CUSTOM={"HANDSONHIP":{"chest":[0.0,0.04,0.04],"head":[0.0,0.1,0.120
 export const ROLE={"idle":"HANDSONHIP","talkA":"HANDSONBOTHHIPS","talkB":"FINGERSONCHIN"};
 export const EXPR={"TALKFORYAN":{"happy":0.21,"ee":0.16,"ih":0.27}};
 // END CUSTOM POSES
-// per-persona overrides of ROLE (missing keys fall back to ROLE)
-export const PERSONA_ROLE={tsundere:{},yandere:{talkA:"TALKFORYAN"},deredere:{talkA:"TALKFORDERE"}};
-export const roleFor=(persona,r)=>(PERSONA_ROLE[persona]||{})[r]||ROLE[r];
+// ---- cast: per-character pose roles (missing keys fall back to ROLE) ----
+export const CHAR_ROLE={kanya:{},himeka:{talkA:"TALKFORDERE"},shiori:{talkA:"TALKFORYAN"},koyuki:{}};
+// per-character clipping nudges, added to a pose's euler angles (radians): CHAR_ADJ[char][pose][bone]=[dx,dy,dz]
+export const CHAR_ADJ={};
+export const roleFor=(char,r)=>(CHAR_ROLE[char]||{})[r]||ROLE[r];
+// legacy persona ids
+export const PERSONA_ROLE={tsundere:CHAR_ROLE.kanya,deredere:CHAR_ROLE.himeka,yandere:CHAR_ROLE.shiori};
 export const POSES={REST,HIPS,CHIN,...CUSTOM};
+export function poseFor(char,name){const P=POSES[name]||{},A=(CHAR_ADJ[char]||{})[name]||{},o={};
+ for(const k in P)o[boneName(k)]=[...P[k]];
+ for(const n in A){const v=o[n]||[0,0,0];o[n]=v.map((x,i)=>x+A[n][i])}return o}

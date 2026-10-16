@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,ROLE,PERSONA_ROLE,boneName} from "./poses.js?v=1792121968";
+import {POSES,ROLE,roleFor,poseFor,boneName} from "./poses.js?v=1792137478";
 const $=id=>document.getElementById(id),D=180/Math.PI;
 const toast=t=>{let e=$("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.append(e)}e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,1800)};
 const FING=["Thumb","Index","Middle","Ring","Little"],SEG={Thumb:["Metacarpal","Proximal","Distal"],_:["Proximal","Intermediate","Distal"]};
@@ -40,11 +40,18 @@ let home=null;
 document.querySelectorAll(".vbtns button[data-v]").forEach(b=>b.onclick=()=>{tgtY=+b.dataset.v;rotX=0.05;if(home){center.copy(home);setZoom(1.6)}});
 $("focus").onclick=()=>{if(!home)return;center.copy(marker.position);setZoom(sel.match(/Thumb|Index|Middle|Ring|Little|Hand/)?0.6:0.9)};
 const loader=new GLTFLoader();loader.register(p=>new VRMLoaderPlugin(p));
-loader.load("grokchan.vrm",g=>{vrm=g.userData.vrm;VRMUtils.removeUnnecessaryVertices?.(g.scene);VRMUtils.combineSkeletons?.(g.scene);VRMUtils.rotateVRM0(vrm);
- scene.add(vrm.scene);vrm.scene.traverse(o=>o.frustumCulled=false);vrm.scene.updateMatrixWorld(true);
- const hp=new THREE.Vector3();vrm.humanoid.getNormalizedBoneNode("hips").getWorldPosition(hp);center.set(0,hp.y+0.25,0);home=center.clone();initExtras();
- $("st").textContent="ready";loadPreset(ROLE.idle);renderUI();window.gcEditor={mirror,ROLE,view(a,z){tgtY=a;if(z)setZoom(z)},camPreset,savePicture,setExpr:(n,v)=>{expr[n]=v;renderExpr()},get expr(){return expr},fullscreen:setFS,get pose(){return pose},exportObj,importObj,setBone,loadPreset}},
- p=>{if(p.total)$("st").textContent="loading model… "+Math.round(p.loaded/p.total*100)+"%"},e=>{$("st").textContent="model failed to load";console.error(e)});
+let charId=(()=>{const q=new URLSearchParams(location.search).get("char")||localStorage.getItem("gc_char")||"kanya";return (window.CAST||[]).some(c=>c.id===q)?q:"kanya"})(),firstLoad=true;const mcache={};
+function loadModel(id){const c=castById(id);charId=c.id;localStorage.setItem("gc_char",c.id);$("char").value=c.id;document.documentElement.style.setProperty("--accent",c.accent);document.documentElement.style.setProperty("--accent2",c.accent2);
+ $("st").textContent="loading "+c.name+"…";
+ const done=v=>{if(charId!==c.id)return;if(vrm)scene.remove(vrm.scene);vrm=v;scene.add(vrm.scene);vrm.scene.updateMatrixWorld(true);
+  const hp=new THREE.Vector3();vrm.humanoid.getNormalizedBoneNode("hips").getWorldPosition(hp);center.set(0,hp.y+0.25,0);home=center.clone();initExtras();labelChips();
+  if(firstLoad){firstLoad=false;loadPreset(roleFor(charId,"idle"))}renderUI();$("st").textContent=c.name+" ready";window.gcEditorChar=c.id;
+  window.gcEditor={mirror,ROLE,get char(){return charId},loadModel,view(a,z){tgtY=a;if(z)setZoom(z)},camPreset,savePicture,setExpr:(n,v)=>{expr[n]=v;renderExpr()},get expr(){return expr},fullscreen:setFS,get pose(){return pose},exportObj,importObj,setBone,loadPreset}};
+ if(mcache[c.id])return done(mcache[c.id]);
+ loader.load(c.model,g=>{const v=g.userData.vrm;VRMUtils.removeUnnecessaryVertices?.(g.scene);VRMUtils.combineSkeletons?.(g.scene);VRMUtils.rotateVRM0(v);v.scene.traverse(o=>o.frustumCulled=false);mcache[c.id]=v;done(v)},
+  p=>{if(p.total&&charId===c.id)$("st").textContent="loading "+c.name+"… "+Math.round(p.loaded/p.total*100)+"%"},e=>{$("st").textContent="model failed to load";console.error(e)})}
+{const sel=$("char");for(const c of window.CAST)sel.add(new Option(c.name+" · "+c.type,c.id));sel.onchange=()=>loadModel(sel.value)}
+loadModel(charId);
 const clock=new THREE.Clock(),tmp=new THREE.Vector3();
 renderer.setAnimationLoop(()=>{if(document.hidden)return;const dt=Math.min(clock.getDelta(),.1);rotY+=(tgtY-rotY)*Math.min(1,dt*10);
  cam.position.set(center.x+Math.sin(rotY)*Math.cos(rotX)*dist,center.y+Math.sin(rotX)*dist,center.z+Math.cos(rotY)*Math.cos(rotX)*dist);cam.lookAt(center);
@@ -54,7 +61,7 @@ renderer.setAnimationLoop(()=>{if(document.hidden)return;const dt=Math.min(clock
 function applyPose(){for(const n of Object.values(ALL)){const b=vrm.humanoid.getNormalizedBoneNode(n);if(!b)continue;const v=pose[n]||[0,0,0];b.rotation.set(v[0],v[1],v[2])}}
 const ALL=Object.values(GROUPS).flat();
 // ---- pose ops ----
-function loadPreset(k){push();pose={};if(k!=="T"){for(const [key,v] of Object.entries(POSES[k]||{}))pose[boneName(key)]=[...v]}renderUI();toast(k==="T"?"T-pose loaded":"Loaded "+k)}
+function loadPreset(k){push();pose={};if(k!=="T"){for(const [n,v] of Object.entries(poseFor(charId,k)))pose[n]=[...v]}renderUI();toast(k==="T"?"T-pose loaded":"Loaded "+k)}
 function setBone(n,i,rad){pose[n]=pose[n]||[0,0,0];pose[n][i]=rad;if(pose[n].every(v=>Math.abs(v)<1e-6))delete pose[n]}
 const mir=n=>n.startsWith("left")?"right"+n.slice(4):n;
 function mirror(from="left"){push();const to=from==="left"?"right":"left";for(const n of Object.keys(pose))if(n.startsWith(to))delete pose[n];for(const [n,v] of Object.entries(pose))if(n.startsWith(from))pose[to+n.slice(from.length)]=[v[0],-v[1],-v[2]];renderUI();toast(from==="left"?"Mirrored left → right":"Mirrored right → left")}
@@ -82,8 +89,8 @@ $("dl").onclick=download;$("share").onclick=share;
 $("imp").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{importObj(JSON.parse(await f.text()))}catch(x){toast("Couldn't read that file: "+x.message)}e.target.value=""};
 // ---- UI ----
 const nice=k=>({REST:"Resting",HIPS:"Hands on hips",CHIN:"Chin"})[k]||k.charAt(0)+k.slice(1).toLowerCase();
-document.querySelectorAll("#load [data-r]").forEach(b=>{const k=ROLE[b.dataset.r];b.dataset.l=k;b.textContent=nice(k)+" · "+{idle:"Idle",talkA:"Talk A",talkB:"Talk B"}[b.dataset.r]});
-{const imp=document.querySelector("#load label.file");for(const [per,o] of Object.entries(PERSONA_ROLE))for(const [r,k] of Object.entries(o)){const b=document.createElement("button");b.dataset.l=k;b.dataset.per=per;b.textContent=nice(k)+" · "+{idle:"Idle",talkA:"Talk A",talkB:"Talk B"}[r]+" ("+{tsundere:"Tsundere",yandere:"Yandere",deredere:"DereDere"}[per]+")";imp.before(b)}}
+function labelChips(){document.querySelectorAll("#load [data-r]").forEach(b=>{const k=roleFor(charId,b.dataset.r);b.dataset.l=k;b.textContent=nice(k)+" · "+{idle:"Idle",talkA:"Talk A",talkB:"Talk B"}[b.dataset.r]})}
+labelChips();
 document.querySelectorAll("#load [data-l]").forEach(b=>b.onclick=()=>loadPreset(b.dataset.l));
 $("undo").onclick=()=>{const s=hist.pop();if(s===undefined)return toast("Nothing to undo");pose=JSON.parse(s);renderUI()};
 $("resetb").onclick=()=>{push();delete pose[sel];renderUI()};$("mirror").onclick=()=>mirror("left");$("mirrorr").onclick=()=>mirror("right");

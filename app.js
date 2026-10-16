@@ -11,14 +11,14 @@ if(window.marked&&window.DOMPurify){
  md=t=>DOMPurify.sanitize(marked.parse(t.replace(/(^|[\s(])\*[ \t]+([^*\n]+?)[ \t]+\*(?=[\s.,!?)]|$)/gm,"$1*$2*")),{ALLOWED_TAGS:["p","br","strong","em","b","i","code","pre","ul","ol","li","a","blockquote","h1","h2","h3","h4","del","hr"],ALLOWED_ATTR:["href","target","rel"],ALLOWED_URI_REGEXP:/^(https?:|mailto:)/i});
 }
 function add(c,t,s){const row=document.createElement("div");row.className="row "+c;
- if(c!=="user"){const p=document.createElement("div");p.className="pfp sm";p.innerHTML='<img src="pfp.jpg" alt="">';p.setAttribute("aria-hidden","true");row.append(p)}
+ if(c!=="user"){const p=document.createElement("div");p.className="pfp sm";p.innerHTML='<img src="'+CH().thumb+'" alt="">';p.setAttribute("aria-hidden","true");row.append(p)}
  const d=document.createElement("div");d.className="m";
  if(c==="assistant"&&md){const b=document.createElement("div");b.className="md";b.innerHTML=md(t);d.append(b)}else d.textContent=t;
  if(s){const e=document.createElement("small");e.textContent=s;d.append(e)}row.append(d);$("log").append(row);scrollLog();return row}
 function scrollLog(){const l=$("log");requestAnimationFrame(()=>l.scrollTop=l.scrollHeight)}
 let typingRow=null;
 function setStatus(s){const e=$("status");if(!e)return;e.className="status "+(s==="online"?"":s);e.querySelector("span").textContent=s==="typing"?"typing…":s==="speaking"?"speaking…":"online"}
-function showTyping(){hideTyping();typingRow=document.createElement("div");typingRow.className="row assistant";typingRow.innerHTML='<div class="pfp sm" aria-hidden="true"><img src="pfp.jpg" alt=""></div><div class="m typing" aria-label="Kanya-Chan is typing"><div class="dots"><span></span><span></span><span></span></div></div>';$("log").append(typingRow);scrollLog();setStatus("typing")}
+function showTyping(){hideTyping();typingRow=document.createElement("div");typingRow.className="row assistant";typingRow.innerHTML='<div class="pfp sm" aria-hidden="true"><img src="'+CH().thumb+'" alt=""></div><div class="m typing" aria-label="'+CH().name+' is typing"><div class="dots"><span></span><span></span><span></span></div></div>';$("log").append(typingRow);scrollLog();setStatus("typing")}
 function hideTyping(){if(typingRow){typingRow.remove();typingRow=null}}
 // --- voice (free Web Speech API) ---
 const TTS=window.speechSynthesis||null;let ttsUnlocked=false,voice=null,jaVoice=null;
@@ -34,8 +34,9 @@ function pickVoice(){if(!TTS)return;const all=TTS.getVoices();
  const jp=[/kyoko/i,/o-?ren/i,/google 日本語|google japanese/i,/nanami/i,/haruka/i,/ayumi|sayaka|mizuki|female/i];
  jaVoice=null;for(const r of jp){const v=js.find(v=>r.test(v.name));if(v){jaVoice=v;break}}if(!jaVoice&&js.length)jaVoice=js[0]}
 if(TTS){pickVoice();TTS.addEventListener?.("voiceschanged",pickVoice)}
-const ML={ja:["🔊 JP","Voice: Japanese (tap to change)"],en:["🔊 EN","Voice: English anime (Kokoro, desktop)"],off:["🔇","Voice off"]};
-function setSpk(){const[l,ti]=ML[vmode];$("spk").textContent=l;$("spk").title=ti+(vmode==="en"?(kReady?" — ready":kw?" — loading…":""):"");$("spk").setAttribute("aria-label",ti);$("spk").classList.toggle("off",vmode==="off")}
+const IC_ON='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/></svg>',IC_OFF='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>';
+const ML={ja:[IC_ON+"<span>JP</span>","Voice: Japanese (tap to change)"],en:[IC_ON+"<span>EN</span>","Voice: English anime (Kokoro, desktop)"],off:[IC_OFF,"Voice off"]};
+function setSpk(){const[l,ti]=ML[vmode];$("spk").innerHTML=l;$("spk").title=ti+(vmode==="en"?(kReady?" — ready":kw?" — loading…":""):"");$("spk").setAttribute("aria-label",ti);$("spk").classList.toggle("off",vmode==="off")}
 setSpk();$("spk").onclick=()=>{vmode=MODES[(MODES.indexOf(vmode)+1)%MODES.length];voiceOn=vmode!=="off";localStorage.setItem("gc_vmode",vmode);setSpk();unlockTTS();
  TTS?.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.()};
 function unlockTTS(){unlockAudio();primeAudio();if(vmode==="en")initKokoro();if(!TTS||ttsUnlocked)return;try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;TTS.speak(u);ttsUnlocked=true}catch(e){}}
@@ -80,7 +81,7 @@ function vvStop(){vvId++;vvAbort?.abort();vvAbort=null;try{vvAudio.onplaying=vvA
 async function vvSay(t,ja,fallback,show=()=>{}){vvStop();const id=vvId,av=window.gcAvatar,L=window.gcVoiceLog;cue(true);L?.push(["vv-req",performance.now()]);
  let failed=false;const fail=why=>{if(failed||id!==vvId)return;failed=true;cue(false);show();L?.push(["vv-fail",performance.now(),why]);vvStop();fallback()};
  const ac=new AbortController();vvAbort=ac;const to=setTimeout(()=>{ac.abort();fail("timeout")},32000);
- try{const r=await fetch(WORKER_URL+"/tts",{method:"POST",signal:ac.signal,headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({text:ja,speaker:SPEAKER[persona]})});
+ try{const r=await fetch(WORKER_URL+"/tts",{method:"POST",signal:ac.signal,headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({text:ja,speaker:CH().speaker})});
   clearTimeout(to);if(id!==vvId)return;if(!r.ok||!/audio/.test(r.headers.get("content-type")||""))return fail("http "+r.status);
   const b=await r.blob();if(id!==vvId)return;vvUrl=URL.createObjectURL(b);L?.push(["vv-audio",performance.now(),b.size,r.headers.get("X-TTS-Ms")]);
   let started=false;
@@ -102,20 +103,36 @@ function sayBrowser(t,txt,v=voice,pitch=1.2,rate=1){const av=window.gcAvatar;if(
  u.onend=u.onerror=()=>{if(done)return;done=true;setStatus("online");if(started)av?.stopTalk?.();else av?.speak(t);window.gcVoiceLog?.push(["end",performance.now()])};
  TTS.speak(u);
  setTimeout(()=>{if(!started&&!done){done=true;TTS.cancel();setStatus("online");av?.speak(t);window.gcVoiceLog?.push(["timer-fallback",performance.now()])}},2500)} // no voices / blocked: timer fallback
-// --- personas ---
-var chatGen=0;const PERSONAS=["tsundere","deredere","yandere"],SPEAKER={tsundere:6,deredere:0,yandere:4}; // VOICEVOX 四国めたん: ツンツン / あまあま / セクシー
-let persona=localStorage.getItem("gc_persona");if(!PERSONAS.includes(persona))persona="tsundere";
-function setPersona(p,fresh){persona=p;localStorage.setItem("gc_persona",p);document.body.dataset.persona=p;
- const seg=$("persona");seg.dataset.i=PERSONAS.indexOf(p);seg.querySelectorAll("button").forEach(b=>b.setAttribute("aria-checked",b.dataset.p===p));
+// --- characters ---
+var chatGen=0;const CAST=window.CAST;const CH=()=>castById(charId);
+let charId=localStorage.getItem("gc_char")||({tsundere:"kanya",deredere:"himeka",yandere:"shiori"})[localStorage.getItem("gc_persona")]||"kanya";if(!CAST.some(c=>c.id===charId))charId="kanya";
+window.gcWantChar=charId;
+const hexA=(h,a)=>{const n=parseInt(h.slice(1),16);return`rgba(${n>>16},${n>>8&255},${n&255},${a})`};
+function renderMenu(){const m=$("charmenu");m.innerHTML="";
+ for(const c of CAST){const b=document.createElement("button");b.type="button";b.className="ccard";b.setAttribute("role","option");b.setAttribute("aria-selected",c.id===charId);b.style.setProperty("--ca",c.accent);
+  b.innerHTML=`<span class="cimg"><img src="${c.thumb}" alt="" loading="lazy"></span><span class="ctext"><b>${c.name}</b><span>${c.type}</span><small>${c.voice.replace("VOICEVOX:","")}</small></span><svg class="tick" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  b.onclick=()=>{toggleMenu(false);if(c.id!==charId)setChar(c.id,true)};b.onpointerenter=()=>window.gcAvatar?.preload?.(c.id);m.append(b)}}
+function toggleMenu(on){const m=$("charmenu"),btn=$("charbtn");on=on??m.hidden;if(on){renderMenu();m.hidden=false;requestAnimationFrame(()=>m.classList.add("open"))}else{m.classList.remove("open");setTimeout(()=>{if(!m.classList.contains("open"))m.hidden=true},180)}btn.setAttribute("aria-expanded",on)}
+$("charbtn").onclick=e=>{e.stopPropagation();toggleMenu()};
+document.addEventListener("click",e=>{if(!$("charmenu").hidden&&!e.target.closest("#charmenu,#charbtn"))toggleMenu(false)});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("charmenu").hidden)toggleMenu(false)});
+function setChar(id,fresh){charId=id;const c=CH();localStorage.setItem("gc_char",id);document.body.dataset.char=id;
+ const st=document.documentElement.style;st.setProperty("--accent",c.accent);st.setProperty("--accent2",c.accent2);st.setProperty("--accent3",c.accent);st.setProperty("--accentbg",hexA(c.accent,.15));st.setProperty("--accentline",hexA(c.accent,.32));
+ $("chname").textContent=c.name;$("chimg").src=c.thumb;$("gimg").src=c.thumb;$("gname").textContent=c.name;$("avn").textContent=c.name;document.title=c.name;
+ $("q").placeholder="Message "+c.name+"…";$("log").dataset.empty="Say hi to "+c.name;$("credit").textContent="Voice: "+c.voice;
+ window.gcAvatar?.setCharacter?.(id);
  if(fresh){TTS?.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();hideTyping();setStatus("online");hist=[];$("log").innerHTML="";chatGen++}}
-$("persona").querySelectorAll("button").forEach(b=>b.onclick=()=>{if(b.dataset.p!==persona)setPersona(b.dataset.p,true)});
-setPersona(persona,false);
-$("new").onclick=()=>{setPersona(persona,true)};
+setChar(charId,false);
+$("new").onclick=()=>{setChar(charId,true)};
+// collapsible top bar (remembered)
+function setTop(c){document.body.classList.toggle("topc",c);const b=$("collapse");b.setAttribute("aria-expanded",!c);b.setAttribute("aria-label",c?"Expand top bar":"Collapse top bar");b.title=c?"Expand top bar":"Collapse top bar";localStorage.setItem("gc_topc",c?"1":"0")}
+setTop(localStorage.getItem("gc_topc")==="1");requestAnimationFrame(()=>requestAnimationFrame(()=>document.body.classList.add("anim")));
+$("collapse").onclick=()=>setTop(!document.body.classList.contains("topc"));
 $("f").onsubmit=async e=>{e.preventDefault();unlockTTS();const q=$("q").value.trim();if(!q)return;
  if(!$("pw").value){showGate();return}
  $("q").value="";autosize();
  hist.push({role:"user",content:q});add("user",q);if(TTS)TTS.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();showTyping();window.gcAvatar?.thinking();const gen=chatGen;
- try{const r=await fetch(WORKER_URL+"/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({messages:hist.slice(-20),model:$("model").value,persona})});
+ try{const r=await fetch(WORKER_URL+"/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({messages:hist.slice(-20),model:$("model").value,character:charId})});
   const o=await r.json();if(gen!==chatGen)return;window.gcAvatar?.idle();
   if(r.status===401){hideTyping();setStatus("online");hist.pop();$("log").lastElementChild?.remove();$("q").value=q;showGate(true);return}
   if(!r.ok){hideTyping();setStatus("online");add("err",o.error||"Error");hist.pop();return}
