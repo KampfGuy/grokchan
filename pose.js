@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,boneName} from "./poses.js?v=1792109360";
+import {POSES,boneName} from "./poses.js?v=1792111252";
 const $=id=>document.getElementById(id),D=180/Math.PI;
 const toast=t=>{let e=$("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.append(e)}e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,1800)};
 const FING=["Thumb","Index","Middle","Ring","Little"],SEG={Thumb:["Metacarpal","Proximal","Distal"],_:["Proximal","Intermediate","Distal"]};
@@ -24,27 +24,31 @@ function resize(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;rend
 new ResizeObserver(resize).observe(cv);resize();
 const ptrs=new Map();let drag=null,pinch=null;
 cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
- if(ptrs.size===1)drag={x:e.clientX,y:e.clientY,ry:tgtY,rx:rotX};else if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),z:dist};drag=null}});
+ if(ptrs.size===1){drag={x:e.clientX,y:e.clientY,ry:tgtY,rx:rotX,t:performance.now(),moved:0}}else if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),z:dist,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,c:center.clone()};drag=null}});
 cv.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
- if(pinch&&ptrs.size===2){const[a,b]=[...ptrs.values()];setZoom(pinch.z*pinch.d/Math.max(20,Math.hypot(a.x-b.x,a.y-b.y)))}
- else if(drag){tgtY=drag.ry+(e.clientX-drag.x)*0.008;rotX=Math.max(-0.6,Math.min(0.8,drag.rx+(e.clientY-drag.y)*0.005))}});
-const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size)drag=null};cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+ if(pinch&&ptrs.size===2){const[a,b]=[...ptrs.values()];setZoom(pinch.z*pinch.d/Math.max(20,Math.hypot(a.x-b.x,a.y-b.y)));pan(pinch,(a.x+b.x)/2-pinch.mx,(a.y+b.y)/2-pinch.my)}
+ else if(drag){drag.moved=Math.max(drag.moved,Math.hypot(e.clientX-drag.x,e.clientY-drag.y));if(e.shiftKey||e.buttons===2||e.buttons===4){if(!drag.p)drag.p={c:center.clone(),mx:e.clientX,my:e.clientY};pan(drag.p,e.clientX-drag.p.mx,e.clientY-drag.p.my);return}tgtY=drag.ry+(e.clientX-drag.x)*0.008;rotX=Math.max(-1.45,Math.min(1.45,drag.rx+(e.clientY-drag.y)*0.006))}});
+function pan(st,dx,dy){const h=2*dist*Math.tan(cam.fov*Math.PI/360)/cv.clientHeight;const r=new THREE.Vector3().setFromMatrixColumn(cam.matrix,0),u=new THREE.Vector3().setFromMatrixColumn(cam.matrix,1);center.copy(st.c).addScaledVector(r,-dx*h).addScaledVector(u,dy*h)}
+const ray=new THREE.Raycaster();cv.addEventListener("pointerup",e=>{const drag=lastDrag;lastDrag=null;if(ptrs.size||!drag||drag.moved>6||performance.now()-drag.t>350||!vrm||!tapT)return;const rc=cv.getBoundingClientRect();ray.setFromCamera(new THREE.Vector2((e.clientX-rc.left)/rc.width*2-1,-(e.clientY-rc.top)/rc.height*2+1),cam);const h=ray.intersectObject(vrm.scene,true)[0];if(h){center.copy(h.point);toast("Camera target set")}});
+cv.addEventListener("contextmenu",e=>e.preventDefault());
+let lastDrag=null;const up=e=>{if(drag)lastDrag=drag;ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size)drag=null};cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
 cv.addEventListener("wheel",e=>{e.preventDefault();setZoom(dist*(1+e.deltaY*0.001))},{passive:false});
-function setZoom(z){dist=Math.max(0.3,Math.min(3.2,z));$("zoom").value=dist}
-$("zoom").oninput=e=>dist=+e.target.value;$("zoom").min=0.3;
+let tapT=true;
+function setZoom(z){dist=Math.max(0.2,Math.min(5,z));$("zoom").value=dist}
+$("zoom").oninput=e=>dist=+e.target.value;$("zoom").min=0.2;$("zoom").max=5;
 let home=null;
 document.querySelectorAll(".vbtns button[data-v]").forEach(b=>b.onclick=()=>{tgtY=+b.dataset.v;rotX=0.05;if(home){center.copy(home);setZoom(1.6)}});
 $("focus").onclick=()=>{if(!home)return;center.copy(marker.position);setZoom(sel.match(/Thumb|Index|Middle|Ring|Little|Hand/)?0.6:0.9)};
 const loader=new GLTFLoader();loader.register(p=>new VRMLoaderPlugin(p));
 loader.load("grokchan.vrm",g=>{vrm=g.userData.vrm;VRMUtils.removeUnnecessaryVertices?.(g.scene);VRMUtils.combineSkeletons?.(g.scene);VRMUtils.rotateVRM0(vrm);
  scene.add(vrm.scene);vrm.scene.traverse(o=>o.frustumCulled=false);vrm.scene.updateMatrixWorld(true);
- const hp=new THREE.Vector3();vrm.humanoid.getNormalizedBoneNode("hips").getWorldPosition(hp);center.set(0,hp.y+0.25,0);home=center.clone();
- $("st").textContent="ready";loadPreset("REST");renderUI();window.gcEditor={get pose(){return pose},exportObj,importObj,setBone,loadPreset}},
+ const hp=new THREE.Vector3();vrm.humanoid.getNormalizedBoneNode("hips").getWorldPosition(hp);center.set(0,hp.y+0.25,0);home=center.clone();initExtras();
+ $("st").textContent="ready";loadPreset("REST");renderUI();window.gcEditor={view(a,z){tgtY=a;if(z)setZoom(z)},camPreset,savePicture,setExpr:(n,v)=>{expr[n]=v;renderExpr()},get expr(){return expr},fullscreen:setFS,get pose(){return pose},exportObj,importObj,setBone,loadPreset}},
  p=>{if(p.total)$("st").textContent="loading model… "+Math.round(p.loaded/p.total*100)+"%"},e=>{$("st").textContent="model failed to load";console.error(e)});
 const clock=new THREE.Clock(),tmp=new THREE.Vector3();
 renderer.setAnimationLoop(()=>{if(document.hidden)return;const dt=Math.min(clock.getDelta(),.1);rotY+=(tgtY-rotY)*Math.min(1,dt*10);
  cam.position.set(center.x+Math.sin(rotY)*Math.cos(rotX)*dist,center.y+Math.sin(rotX)*dist,center.z+Math.cos(rotY)*Math.cos(rotX)*dist);cam.lookAt(center);
- if(vrm){applyPose();vrm.update(dt);const n=vrm.humanoid.getNormalizedBoneNode(sel);marker.visible=!!n;if(n){vrm.humanoid.update?.();n.getWorldPosition(tmp);
+ if(vrm){applyPose();applyExpr();vrm.update(dt);const n=vrm.humanoid.getNormalizedBoneNode(sel);marker.visible=!!n&&!document.body.classList.contains("fs");if(n){vrm.humanoid.update?.();n.getWorldPosition(tmp);
   const raw=vrm.humanoid.getRawBoneNode(sel);if(raw){raw.getWorldPosition(tmp)}marker.position.copy(tmp)}}
  renderer.render(scene,cam)});
 function applyPose(){for(const n of Object.values(ALL)){const b=vrm.humanoid.getNormalizedBoneNode(n);if(!b)continue;const v=pose[n]||[0,0,0];b.rotation.set(v[0],v[1],v[2])}}
@@ -62,11 +66,12 @@ function fingerPreset(k){push();const P=FP[k];for(const s of fside==="both"?["le
 function exportObj(){const bones={};const e=new THREE.Euler(),q=new THREE.Quaternion();
  for(const n of Object.keys(pose).sort()){const v=pose[n];e.set(v[0],v[1],v[2],"XYZ");q.setFromEuler(e);
   bones[n]={euler_deg:v.map(x=>+(x*D).toFixed(2)),quat:[q.x,q.y,q.z,q.w].map(x=>+x.toFixed(6))}}
- return{version:1,name:($("pname").value.trim()||"pose"),tag,bones}}
+ const ex={};for(const [k,v] of Object.entries(expr))if(v>0.001)ex[k]=+v.toFixed(3);const o={version:2,name:($("pname").value.trim()||"pose"),tag,bones};if(Object.keys(ex).length)o.expressions=ex;if(look.yaw||look.pitch)o.look={yaw:+look.yaw.toFixed(1),pitch:+look.pitch.toFixed(1)};return o}
 function importObj(o){if(!o||typeof o!=="object"||!o.bones)throw new Error("not a pose file");push();pose={};
  for(const [n,b] of Object.entries(o.bones)){if(!ALL.includes(n))continue;let v;
   if(Array.isArray(b.euler_deg))v=b.euler_deg.map(x=>(+x||0)/D);else if(Array.isArray(b.quat)){const e=new THREE.Euler().setFromQuaternion(new THREE.Quaternion(...b.quat.map(Number)),"XYZ");v=[e.x,e.y,e.z]}
   if(v&&v.every(Number.isFinite))pose[n]=v}
+ expr={};if(o.expressions&&typeof o.expressions==="object")for(const [k,v] of Object.entries(o.expressions)){const n=+v;if(Number.isFinite(n))expr[k]=Math.max(0,Math.min(1,n))}look={yaw:+o.look?.yaw||0,pitch:+o.look?.pitch||0};renderExpr();
  if(o.name)$("pname").value=String(o.name).slice(0,40);if(["idle","talkA","talkB"].includes(o.tag)){tag=o.tag}renderUI();toast("Imported "+(o.name||"pose"))}
 const fname=()=>"grokchan-pose-"+(($("pname").value.trim()||"pose").toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")||"pose")+".json";
 const fileBlob=()=>new Blob([JSON.stringify(exportObj(),null,2)],{type:"application/json"});
@@ -98,3 +103,44 @@ function renderUI(){
  $("st").textContent=vrm?("editing "+pretty(sel)+(sel.match(/^(left|right)/)?" ("+sel.match(/^(left|right)/)[1]+")":"")):$("st").textContent}
 function renderBonesOnly(){[...$("bones").children].forEach(b=>{const n=GROUPS[group].find(x=>b.textContent.replace(" •","")===pretty(x));if(n)b.textContent=pretty(n)+(pose[n]?" •":"")})}
 renderUI();
+
+// ---- v2: expressions, camera, fullscreen, picture ----
+let expr={},look={yaw:0,pitch:0},exprNames=[];
+const STD=["happy","angry","sad","relaxed","surprised","blink","blinkLeft","blinkRight","aa","ih","ou","ee","oh"];
+function applyExpr(){const em=vrm.expressionManager;if(em)for(const n of exprNames)em.setValue(n,expr[n]||0);
+ if(vrm.lookAt){vrm.lookAt.target=null;vrm.lookAt.autoUpdate=false;vrm.lookAt.yaw=look.yaw;vrm.lookAt.pitch=look.pitch}}
+function slider(label,min,max,step,val,on){const r=document.createElement("div");r.className="ex";r.innerHTML=`<span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" value="${val}"><output>${(+val).toFixed(step<1?2:0)}</output>`;
+ const[i,o]=[r.children[1],r.children[2]];i.oninput=()=>{on(+i.value);o.textContent=(+i.value).toFixed(step<1?2:0)};return r}
+function renderExpr(){const box=$("exprs");if(!box||!vrm)return;box.innerHTML="";
+ for(const n of exprNames)box.append(slider(n,0,1,0.01,expr[n]||0,v=>expr[n]=v));
+ box.append(slider("look ↔",-30,30,1,look.yaw,v=>look.yaw=v),slider("look ↕",-25,25,1,look.pitch,v=>look.pitch=v))}
+const boneW=n=>{const b=vrm.humanoid.getRawBoneNode(n)||vrm.humanoid.getNormalizedBoneNode(n);return b?b.getWorldPosition(new THREE.Vector3()):null};
+function camPreset(k){if(!vrm)return;vrm.scene.updateMatrixWorld(true);const head=boneW("head"),hips=boneW("hips");
+ if(k==="head"){center.copy(head).add(new THREE.Vector3(0,0.06,0));setZoom(0.95);setFov(25);rotX=0.05;tgtY=0}
+ else if(k==="full"){center.set(0,hips.y*0.95,0);setZoom(3.2);setFov(30);rotX=0.08;tgtY=0}
+ else if(k==="threeq"){center.copy(head).lerp(hips,0.45);setZoom(1.9);setFov(28);rotX=0.12;tgtY=0.6}
+ else if(k==="focushead"){center.copy(head).add(new THREE.Vector3(0,0.06,0))}}
+function setFov(f){cam.fov=f;cam.updateProjectionMatrix();if($("fov")){$("fov").value=f;$("fov").nextElementSibling.textContent=Math.round(f)+"°"}}
+function setFS(on){document.body.classList.toggle("fs",on);const d=document.documentElement;
+ if(on){if(d.requestFullscreen&&!document.fullscreenElement)d.requestFullscreen().catch(()=>{})}else if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+ setTimeout(resize,60)}
+document.addEventListener("fullscreenchange",()=>{if(!document.fullscreenElement&&document.body.classList.contains("fs")){document.body.classList.remove("fs");setTimeout(resize,60)}});
+async function savePicture(opt){opt=opt||{};const bg=opt.bg??$("picbg").value,col=opt.color??$("piccol").value,sq=opt.square??$("picsq").checked,long=opt.size??+$("picsize").value;
+ const w0=cv.clientWidth,h0=cv.clientHeight;let W,H;if(sq){W=H=long}else if(w0>=h0){W=long;H=Math.round(long*h0/w0)}else{H=long;W=Math.round(long*w0/h0)}
+ const pr=renderer.getPixelRatio(),mv=marker.visible,ob=scene.background,asp=cam.aspect;
+ marker.visible=false;scene.background=bg==="solid"?new THREE.Color(col):null;renderer.setPixelRatio(1);renderer.setSize(W,H,false);cam.aspect=W/H;cam.updateProjectionMatrix();
+ renderer.render(scene,cam);const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+ marker.visible=mv;scene.background=ob;renderer.setPixelRatio(pr);cam.aspect=asp;resize();
+ const name="grokchan-"+(($("pname").value.trim()||"picture").toLowerCase().replace(/[^a-z0-9_-]+/g,"-").replace(/^-|-$/g,"")||"picture")+".png";
+ window.gcLastPic={name,size:blob.size,W,H};if(opt.noSave)return blob;
+ const f=new File([blob],name,{type:"image/png"});
+ if(opt.share!==false&&navigator.canShare?.({files:[f]})){try{await navigator.share({files:[f],title:name});return blob}catch(e){if(e.name==="AbortError")return blob}}
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast(`Saved ${W}×${H} PNG`);return blob}
+function initExtras(){const em=vrm.expressionManager;const all=em?(em.expressions||[]).map(e=>e.expressionName):[];
+ exprNames=[...STD.filter(n=>all.includes(n)),...all.filter(n=>!STD.includes(n)&&!/^(look(Up|Down|Left|Right)|neutral)$/.test(n))];renderExpr()}
+document.querySelectorAll("[data-cam]").forEach(b=>b.onclick=()=>camPreset(b.dataset.cam));
+$("fov").oninput=e=>setFov(+e.target.value);$("tapt").onchange=e=>tapT=e.target.checked;
+$("exreset").onclick=()=>{expr={};look={yaw:0,pitch:0};renderExpr()};
+$("fsbtn").onclick=()=>setFS(true);$("fsx").onclick=()=>setFS(false);
+$("cap").onclick=()=>savePicture();$("savepic").onclick=()=>savePicture();
+$("picbg").onchange=e=>$("piccol").disabled=e.target.value!=="solid";

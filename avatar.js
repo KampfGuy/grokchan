@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,ROLE,boneName} from "./poses.js?v=1792109360";
+import {POSES,ROLE,EXPR,boneName} from "./poses.js?v=1792111252";
 const box=document.getElementById("av"),cv=document.getElementById("avc"),lbl=document.getElementById("avl");
 const fail=e=>{console.warn("avatar disabled:",e);box.classList.add("hide");window.gcAvatar=null};
 const S={mode:"idle",talkUntil:0,emo:null,emoUntil:0};
@@ -59,13 +59,14 @@ loader.load("grokchan.vrm",g=>{
  const stopTalk=()=>{const now=performance.now()/1000;S.talkUntil=Math.min(S.talkUntil,now);S.emoUntil=Math.min(S.emoUntil,now+2)};
  window.gcAvatar={thinking(){S.mode="thinking";S.emo=null},idle(){S.mode="idle"},speak,stopTalk};
  if(S.pending)speak(S.pending);
- let nextBlink=2,blinkT=-1,th=0;const clock=new THREE.Clock();const V=["aa","ih","ou","ee","oh"].filter(has);
+ let nextBlink=2,blinkT=-1,th=0;const ES={};const clock=new THREE.Clock();const V=["aa","ih","ou","ee","oh"].filter(has);
  renderer.setAnimationLoop(()=>{if(document.hidden){clock.getDelta();return}const dt=Math.min(clock.getDelta(),0.1),t=clock.elapsedTime;
   const nowP=performance.now()/1000,f=window.gcForce;
   const tp=f||(nowP<S.talkUntil?S.talkPose:null);
   if(tp)S.lastPose=tp;
   th+=((tp?1:0)-th)*Math.min(1,dt*12); // ~0.25 s blend
   const A=CROSS,C=window.gcPose[S.lastPose||ROLE.talkA]||NP.HIPS,br=Math.sin(t*1.6);
+  const XA=(EXPR||{})[ROLE.idle]||{},XC=(EXPR||{})[S.lastPose||ROLE.talkA]||{},bx=n=>(XA[n]||0)+((XC[n]||0)-(XA[n]||0))*th;
   for(const k in bones){const b=bones[k];if(!b)continue;const a=A[k]||Z0,c=C[k]||Z0;
    b.rotation.set(a[0]+(c[0]-a[0])*th,a[1]+(c[1]-a[1])*th,a[2]+(c[2]-a[2])*th)}
   const bc=bones.chest,bl=bones.leftUpperArm,brr=bones.rightUpperArm,bs=bones.spine||B("spine");
@@ -74,13 +75,14 @@ loader.load("grokchan.vrm",g=>{
   target.position.set(cam.position.x+px*0.6,cam.position.y+py*0.4,cam.position.z);
   // blink
   if(t>nextBlink&&blinkT<0)blinkT=0;let b=0;if(blinkT>=0){blinkT+=dt;b=Math.sin(Math.min(1,blinkT/0.15)*Math.PI);if(blinkT>=0.15){blinkT=-1;nextBlink=t+2+Math.random()*3}}
-  set("blink",b);
+  set("blink",Math.max(b,bx("blink")));["blinkLeft","blinkRight","lookUp","lookDown","lookLeft","lookRight"].forEach(n=>set(n,bx(n)));
+  for(const n in {...XA,...XC})if(!EMOS.includes(n)&&!/^(aa|ih|ou|ee|oh|blink.*|look.*)$/.test(n))set(n,bx(n));
   // mouth
-  const now=performance.now()/1000;V.forEach(v=>set(v,0));
+  const now=performance.now()/1000;V.forEach(v=>set(v,now<S.talkUntil?0:bx(v)));
   if(now<S.talkUntil&&V.length){const k=Math.floor(t*9)%3,v=["aa","ih","ou"].filter(has);const ph=(t*9)%1;set(v[k%v.length]||V[0],0.25+0.55*Math.sin(ph*Math.PI))}
   // emotion
   const e=now<S.emoUntil?S.emo:(S.mode==="thinking"?"relaxed":null);
-  EMOS.forEach(n=>{if(!has(n))return;const cur=em.getValue(n)||0;em.setValue(n,cur+(((n===e)?(n==="relaxed"&&S.mode==="thinking"?0.3:0.7):0)-cur)*Math.min(1,dt*6))});
+  EMOS.forEach(n=>{if(!has(n))return;const cur=ES[n]||0;ES[n]=cur+(((n===e)?(n==="relaxed"&&S.mode==="thinking"?0.3:0.7):0)-cur)*Math.min(1,dt*6);em.setValue(n,Math.min(1,Math.max(ES[n],bx(n))))});
   rotY+=(tgtY-rotY)*Math.min(1,dt*12);rotX+=(tgtX-rotX)*Math.min(1,dt*12);vrm.scene.rotation.set(rotX,baseRY+rotY,0);
   vrm.update(dt);renderer.render(scene,cam)});
 },p=>{if(p.total)document.getElementById("avp").textContent=Math.round(p.loaded/p.total*100)+"%"},fail);
