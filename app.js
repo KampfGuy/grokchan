@@ -8,7 +8,7 @@ let md=null;
 if(window.marked&&window.DOMPurify){
  marked.use({gfm:true,breaks:true,renderer:{html(t){return esc(typeof t==="string"?t:t.text||t.raw||"")}}});
  DOMPurify.addHook("afterSanitizeAttributes",n=>{if(n.tagName==="A"){n.setAttribute("target","_blank");n.setAttribute("rel","noopener noreferrer")}});
- md=t=>DOMPurify.sanitize(marked.parse(t),{ALLOWED_TAGS:["p","br","strong","em","b","i","code","pre","ul","ol","li","a","blockquote","h1","h2","h3","h4","del","hr"],ALLOWED_ATTR:["href","target","rel"],ALLOWED_URI_REGEXP:/^(https?:|mailto:)/i});
+ md=t=>DOMPurify.sanitize(marked.parse(t.replace(/(^|[\s(])\*[ \t]+([^*\n]+?)[ \t]+\*(?=[\s.,!?)]|$)/gm,"$1*$2*")),{ALLOWED_TAGS:["p","br","strong","em","b","i","code","pre","ul","ol","li","a","blockquote","h1","h2","h3","h4","del","hr"],ALLOWED_ATTR:["href","target","rel"],ALLOWED_URI_REGEXP:/^(https?:|mailto:)/i});
 }
 function add(c,t,s){const row=document.createElement("div");row.className="row "+c;
  if(c!=="user"){const p=document.createElement("div");p.className="pfp sm";p.innerHTML='<img src="pfp.jpg" alt="">';p.setAttribute("aria-hidden","true");row.append(p)}

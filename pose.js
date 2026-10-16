@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,ROLE,PERSONA_ROLE,boneName} from "./poses.js?v=1792118986";
+import {POSES,ROLE,PERSONA_ROLE,boneName} from "./poses.js?v=1792119685";
 const $=id=>document.getElementById(id),D=180/Math.PI;
 const toast=t=>{let e=$("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.append(e)}e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,1800)};
 const FING=["Thumb","Index","Middle","Ring","Little"],SEG={Thumb:["Metacarpal","Proximal","Distal"],_:["Proximal","Intermediate","Distal"]};
