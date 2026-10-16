@@ -11,14 +11,14 @@ if(window.marked&&window.DOMPurify){
  md=t=>DOMPurify.sanitize(marked.parse(t),{ALLOWED_TAGS:["p","br","strong","em","b","i","code","pre","ul","ol","li","a","blockquote","h1","h2","h3","h4","del","hr"],ALLOWED_ATTR:["href","target","rel"],ALLOWED_URI_REGEXP:/^(https?:|mailto:)/i});
 }
 function add(c,t,s){const row=document.createElement("div");row.className="row "+c;
- if(c!=="user"){const p=document.createElement("div");p.className="pfp sm";p.textContent="G";p.setAttribute("aria-hidden","true");row.append(p)}
+ if(c!=="user"){const p=document.createElement("div");p.className="pfp sm";p.innerHTML='<img src="pfp.jpg" alt="">';p.setAttribute("aria-hidden","true");row.append(p)}
  const d=document.createElement("div");d.className="m";
  if(c==="assistant"&&md){const b=document.createElement("div");b.className="md";b.innerHTML=md(t);d.append(b)}else d.textContent=t;
  if(s){const e=document.createElement("small");e.textContent=s;d.append(e)}row.append(d);$("log").append(row);scrollLog();return row}
 function scrollLog(){const l=$("log");requestAnimationFrame(()=>l.scrollTop=l.scrollHeight)}
 let typingRow=null;
 function setStatus(s){const e=$("status");if(!e)return;e.className="status "+(s==="online"?"":s);e.querySelector("span").textContent=s==="typing"?"typing…":s==="speaking"?"speaking…":"online"}
-function showTyping(){hideTyping();typingRow=document.createElement("div");typingRow.className="row assistant";typingRow.innerHTML='<div class="pfp sm" aria-hidden="true">G</div><div class="m typing" aria-label="Grok-Chan is typing"><div class="dots"><span></span><span></span><span></span></div></div>';$("log").append(typingRow);scrollLog();setStatus("typing")}
+function showTyping(){hideTyping();typingRow=document.createElement("div");typingRow.className="row assistant";typingRow.innerHTML='<div class="pfp sm" aria-hidden="true"><img src="pfp.jpg" alt=""></div><div class="m typing" aria-label="Grok-Chan is typing"><div class="dots"><span></span><span></span><span></span></div></div>';$("log").append(typingRow);scrollLog();setStatus("typing")}
 function hideTyping(){if(typingRow){typingRow.remove();typingRow=null}}
 // --- voice (free Web Speech API) ---
 const TTS=window.speechSynthesis||null;let ttsUnlocked=false,voice=null,jaVoice=null;
