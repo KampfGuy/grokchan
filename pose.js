@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,ROLE,boneName} from "./poses.js?v=1792113139";
+import {POSES,ROLE,PERSONA_ROLE,boneName} from "./poses.js?v=1792118964";
 const $=id=>document.getElementById(id),D=180/Math.PI;
 const toast=t=>{let e=$("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.append(e)}e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,1800)};
 const FING=["Thumb","Index","Middle","Ring","Little"],SEG={Thumb:["Metacarpal","Proximal","Distal"],_:["Proximal","Intermediate","Distal"]};
@@ -83,6 +83,7 @@ $("imp").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{importObj
 // ---- UI ----
 const nice=k=>({REST:"Resting",HIPS:"Hands on hips",CHIN:"Chin"})[k]||k.charAt(0)+k.slice(1).toLowerCase();
 document.querySelectorAll("#load [data-r]").forEach(b=>{const k=ROLE[b.dataset.r];b.dataset.l=k;b.textContent=nice(k)+" · "+{idle:"Idle",talkA:"Talk A",talkB:"Talk B"}[b.dataset.r]});
+{const imp=document.querySelector("#load label.file");for(const [per,o] of Object.entries(PERSONA_ROLE))for(const [r,k] of Object.entries(o)){const b=document.createElement("button");b.dataset.l=k;b.dataset.per=per;b.textContent=nice(k)+" · "+{idle:"Idle",talkA:"Talk A",talkB:"Talk B"}[r]+" ("+{tsundere:"Tsundere",yandere:"Yandere",deredere:"DereDere"}[per]+")";imp.before(b)}}
 document.querySelectorAll("#load [data-l]").forEach(b=>b.onclick=()=>loadPreset(b.dataset.l));
 $("undo").onclick=()=>{const s=hist.pop();if(s===undefined)return toast("Nothing to undo");pose=JSON.parse(s);renderUI()};
 $("resetb").onclick=()=>{push();delete pose[sel];renderUI()};$("mirror").onclick=()=>mirror("left");$("mirrorr").onclick=()=>mirror("right");

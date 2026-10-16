@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,ROLE,EXPR,boneName} from "./poses.js?v=1792113939";
+import {POSES,ROLE,EXPR,boneName,roleFor} from "./poses.js?v=1792118964";
 const box=document.getElementById("av"),cv=document.getElementById("avc"),lbl=document.getElementById("avl");
 const fail=e=>{console.warn("avatar disabled:",e);box.classList.add("hide");window.gcAvatar=null};
 const S={mode:"idle",talkUntil:0,emo:null,emoUntil:0};
@@ -55,7 +55,7 @@ loader.load("grokchan.vrm",g=>{
   if(/!\?|\?!|what\?|really\?|eh\?|whoa|wow/.test(s))return "surprised";
   return "relaxed"}
  // speak(t,manual): manual=true keeps talking until stopTalk() (driven by speech onend)
- const speak=(t,manual)=>{const now=performance.now()/1000;S.mode="idle";S.talkUntil=manual?Infinity:now+Math.min(6,Math.max(3,t.length*0.05));S.talkPose=Math.random()<0.5?ROLE.talkA:ROLE.talkB;S.emo=pick(t);S.emoUntil=manual?Infinity:S.talkUntil+2.5};
+ const speak=(t,manual)=>{const now=performance.now()/1000;S.mode="idle";S.talkUntil=manual?Infinity:now+Math.min(6,Math.max(3,t.length*0.05));const per=document.body.dataset.persona||"tsundere";S.talkPose=Math.random()<0.5?roleFor(per,"talkA"):roleFor(per,"talkB");S.emo=pick(t);S.emoUntil=manual?Infinity:S.talkUntil+2.5};
  const stopTalk=()=>{const now=performance.now()/1000;S.talkUntil=Math.min(S.talkUntil,now);S.emoUntil=Math.min(S.emoUntil,now+2)};
  window.gcAvatar={thinking(){S.mode="thinking";S.emo=null},idle(){S.mode="idle"},speak,stopTalk};
  if(S.pending)speak(S.pending);
