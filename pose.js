@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
 import {VRMLoaderPlugin, VRMUtils} from "@pixiv/three-vrm";
-import {POSES,boneName} from "./poses.js?v=1792111252";
+import {POSES,ROLE,boneName} from "./poses.js?v=1792113139";
 const $=id=>document.getElementById(id),D=180/Math.PI;
 const toast=t=>{let e=$("toast");if(!e){e=document.createElement("div");e.id="toast";document.body.append(e)}e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,1800)};
 const FING=["Thumb","Index","Middle","Ring","Little"],SEG={Thumb:["Metacarpal","Proximal","Distal"],_:["Proximal","Intermediate","Distal"]};
@@ -43,7 +43,7 @@ const loader=new GLTFLoader();loader.register(p=>new VRMLoaderPlugin(p));
 loader.load("grokchan.vrm",g=>{vrm=g.userData.vrm;VRMUtils.removeUnnecessaryVertices?.(g.scene);VRMUtils.combineSkeletons?.(g.scene);VRMUtils.rotateVRM0(vrm);
  scene.add(vrm.scene);vrm.scene.traverse(o=>o.frustumCulled=false);vrm.scene.updateMatrixWorld(true);
  const hp=new THREE.Vector3();vrm.humanoid.getNormalizedBoneNode("hips").getWorldPosition(hp);center.set(0,hp.y+0.25,0);home=center.clone();initExtras();
- $("st").textContent="ready";loadPreset("REST");renderUI();window.gcEditor={view(a,z){tgtY=a;if(z)setZoom(z)},camPreset,savePicture,setExpr:(n,v)=>{expr[n]=v;renderExpr()},get expr(){return expr},fullscreen:setFS,get pose(){return pose},exportObj,importObj,setBone,loadPreset}},
+ $("st").textContent="ready";loadPreset(ROLE.idle);renderUI();window.gcEditor={mirror,ROLE,view(a,z){tgtY=a;if(z)setZoom(z)},camPreset,savePicture,setExpr:(n,v)=>{expr[n]=v;renderExpr()},get expr(){return expr},fullscreen:setFS,get pose(){return pose},exportObj,importObj,setBone,loadPreset}},
  p=>{if(p.total)$("st").textContent="loading model… "+Math.round(p.loaded/p.total*100)+"%"},e=>{$("st").textContent="model failed to load";console.error(e)});
 const clock=new THREE.Clock(),tmp=new THREE.Vector3();
 renderer.setAnimationLoop(()=>{if(document.hidden)return;const dt=Math.min(clock.getDelta(),.1);rotY+=(tgtY-rotY)*Math.min(1,dt*10);
@@ -57,7 +57,7 @@ const ALL=Object.values(GROUPS).flat();
 function loadPreset(k){push();pose={};if(k!=="T"){for(const [key,v] of Object.entries(POSES[k]||{}))pose[boneName(key)]=[...v]}renderUI();toast(k==="T"?"T-pose loaded":"Loaded "+k)}
 function setBone(n,i,rad){pose[n]=pose[n]||[0,0,0];pose[n][i]=rad;if(pose[n].every(v=>Math.abs(v)<1e-6))delete pose[n]}
 const mir=n=>n.startsWith("left")?"right"+n.slice(4):n;
-function mirror(){push();for(const n of Object.keys(pose))if(n.startsWith("right"))delete pose[n];for(const [n,v] of Object.entries(pose))if(n.startsWith("left"))pose[mir(n)]=[v[0],-v[1],-v[2]];renderUI();toast("Mirrored left → right")}
+function mirror(from="left"){push();const to=from==="left"?"right":"left";for(const n of Object.keys(pose))if(n.startsWith(to))delete pose[n];for(const [n,v] of Object.entries(pose))if(n.startsWith(from))pose[to+n.slice(from.length)]=[v[0],-v[1],-v[2]];renderUI();toast(from==="left"?"Mirrored left → right":"Mirrored right → left")}
 const FP={open:{},relaxed:{f:[0.25,0.25,0.2],t:[0.1,0.15,0.1]},fist:{f:[1.45,1.6,1.1],t:[0.5,0.6,0.5]},point:{f:[1.45,1.6,1.1],t:[0.5,0.6,0.5],open:["Index"]},two:{f:[1.45,1.6,1.1],t:[0.5,0.6,0.5],open:["Index","Middle"]}};
 function fingerPreset(k){push();const P=FP[k];for(const s of fside==="both"?["left","right"]:[fside]){const sg=s==="left"?-1:1;
  for(const f of FING){const segs=SEG[f]||SEG._;segs.forEach((j,i)=>{const n=s+f+j;delete pose[n];if(!P.f)return;if(P.open?.includes(f))return;
@@ -81,9 +81,11 @@ async function share(){const f=new File([fileBlob()],fname(),{type:"application/
 $("dl").onclick=download;$("share").onclick=share;
 $("imp").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{importObj(JSON.parse(await f.text()))}catch(x){toast("Couldn't read that file: "+x.message)}e.target.value=""};
 // ---- UI ----
+const nice=k=>({REST:"Resting",HIPS:"Hands on hips",CHIN:"Chin"})[k]||k.charAt(0)+k.slice(1).toLowerCase();
+document.querySelectorAll("#load [data-r]").forEach(b=>{const k=ROLE[b.dataset.r];b.dataset.l=k;b.textContent=nice(k)+" · "+{idle:"Idle",talkA:"Talk A",talkB:"Talk B"}[b.dataset.r]});
 document.querySelectorAll("#load [data-l]").forEach(b=>b.onclick=()=>loadPreset(b.dataset.l));
 $("undo").onclick=()=>{const s=hist.pop();if(s===undefined)return toast("Nothing to undo");pose=JSON.parse(s);renderUI()};
-$("resetb").onclick=()=>{push();delete pose[sel];renderUI()};$("mirror").onclick=mirror;
+$("resetb").onclick=()=>{push();delete pose[sel];renderUI()};$("mirror").onclick=()=>mirror("left");$("mirrorr").onclick=()=>mirror("right");
 document.querySelectorAll("#fpre [data-f]").forEach(b=>b.onclick=()=>fingerPreset(b.dataset.f));
 document.querySelectorAll("#fside button").forEach(b=>b.onclick=()=>{fside=b.dataset.s;document.querySelectorAll("#fside button").forEach(x=>x.classList.toggle("on",x===b))});
 document.querySelectorAll("#tag button").forEach(b=>b.onclick=()=>{tag=b.dataset.t;renderUI()});

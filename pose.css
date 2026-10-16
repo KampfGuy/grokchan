@@ -46,3 +46,4 @@ body.fs .fsbar{display:flex;position:fixed;z-index:51;left:0;right:0;bottom:calc
 .mini2{min-height:30px!important;padding:2px 10px!important;font-size:12px;margin-left:auto}
 #piccol{width:52px;min-height:44px;border:0;background:none}
 select.inp{flex:1}
+.row2{flex-wrap:wrap}.row2>button{flex:1 1 40%}
