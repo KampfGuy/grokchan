@@ -1,5 +1,5 @@
 const WORKER_URL="https://grokchan-api.kampfguy.workers.dev";
-const MODELS=["nvidia/nemotron-3-super-120b-a12b:free","thinkingmachines/inkling:free","nvidia/nemotron-3.5-lightning:free","google/gemma-4-31b-it:free"];
+const MODELS=["nvidia/nemotron-3-ultra-550b-a55b:free","nvidia/nemotron-3-super-120b-a12b:free","nvidia/nemotron-3.5-super-vl:free","poolside/laguna-s-2.1:free","google/gemma-4-31b-it:free"];
 const $=id=>document.getElementById(id);let hist=[];
 MODELS.forEach(m=>$("model").add(new Option(m,m)));
 $("pw").value=localStorage.getItem("gc_pw")||"";$("pw").onchange=()=>localStorage.setItem("gc_pw",$("pw").value.trim());
