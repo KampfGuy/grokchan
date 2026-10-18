@@ -2,7 +2,7 @@ const WORKER_URL="https://grokchan-api.kampfguy.workers.dev";
 const MODELS=["nvidia/nemotron-3-super-120b-a12b:free","thinkingmachines/inkling:free","nvidia/nemotron-3.5-lightning:free","google/gemma-4-31b-it:free"];
 const $=id=>document.getElementById(id);let hist=[];
 MODELS.forEach(m=>$("model").add(new Option(m,m)));
-$("pw").value=localStorage.getItem("gc_pw")||"";$("pw").onchange=()=>localStorage.setItem("gc_pw",$("pw").value);
+$("pw").value=localStorage.getItem("gc_pw")||"";$("pw").onchange=()=>localStorage.setItem("gc_pw",$("pw").value.trim());
 const esc=t=>t.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let md=null;
 if(window.marked&&window.DOMPurify){
@@ -81,7 +81,7 @@ function vvStop(){vvId++;vvAbort?.abort();vvAbort=null;try{vvAudio.onplaying=vvA
 async function vvSay(t,ja,fallback,show=()=>{}){vvStop();const id=vvId,av=window.gcAvatar,L=window.gcVoiceLog;cue(true);L?.push(["vv-req",performance.now()]);
  let failed=false;const fail=why=>{if(failed||id!==vvId)return;failed=true;cue(false);show();L?.push(["vv-fail",performance.now(),why]);vvStop();fallback()};
  const ac=new AbortController();vvAbort=ac;const to=setTimeout(()=>{ac.abort();fail("timeout")},32000);
- try{const r=await fetch(WORKER_URL+"/tts",{method:"POST",signal:ac.signal,headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({text:ja,speaker:CH().speaker})});
+ try{const r=await fetch(WORKER_URL+"/tts",{method:"POST",signal:ac.signal,headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value.trim()},body:JSON.stringify({text:ja,speaker:CH().speaker})});
   clearTimeout(to);if(id!==vvId)return;if(!r.ok||!/audio/.test(r.headers.get("content-type")||""))return fail("http "+r.status);
   const b=await r.blob();if(id!==vvId)return;vvUrl=URL.createObjectURL(b);L?.push(["vv-audio",performance.now(),b.size,r.headers.get("X-TTS-Ms")]);
   let started=false;
@@ -132,7 +132,7 @@ $("f").onsubmit=async e=>{e.preventDefault();unlockTTS();const q=$("q").value.tr
  if(!$("pw").value){showGate();return}
  $("q").value="";autosize();
  hist.push({role:"user",content:q});add("user",q);if(TTS)TTS.cancel();kStop();vvStop();kJob=null;window.gcAvatar?.stopTalk?.();showTyping();window.gcAvatar?.thinking();const gen=chatGen;
- try{const r=await fetch(WORKER_URL+"/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value},body:JSON.stringify({messages:hist.slice(-20),model:$("model").value,character:charId})});
+ try{const r=await fetch(WORKER_URL+"/chat",{method:"POST",headers:{"Content-Type":"application/json","X-Access-Password":$("pw").value.trim()},body:JSON.stringify({messages:hist.slice(-20),model:$("model").value,character:charId})});
   const o=await r.json();if(gen!==chatGen)return;window.gcAvatar?.idle();
   if(r.status===401){hideTyping();setStatus("online");hist.pop();$("log").lastElementChild?.remove();$("q").value=q;showGate(true);return}
   if(!r.ok){hideTyping();setStatus("online");add("err",o.error||"Error");hist.pop();return}
